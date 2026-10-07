@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>粒子宇宙</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden;color:#fff;
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei","Helvetica Neue",Arial,sans-serif}
+  canvas{display:block;touch-action:none;cursor:crosshair}
+  #cap{position:fixed;top:30px;left:0;right:0;text-align:center;font-size:16px;letter-spacing:3px;
+    opacity:0;transition:opacity 1.2s;text-shadow:0 0 12px rgba(120,170,255,.8);padding:0 16px;pointer-events:none}
+  #brand{position:fixed;top:10px;left:14px;font-size:11px;opacity:.35;letter-spacing:1px;pointer-events:none}
+  #stats{position:fixed;bottom:10px;left:14px;font-size:11px;opacity:.4;font-family:Menlo,Consolas,monospace;pointer-events:none}
+  #ui{position:fixed;left:50%;bottom:34px;transform:translateX(-50%);display:flex;gap:8px;flex-wrap:wrap;
+    justify-content:center;max-width:94vw;opacity:0;transition:opacity 1.5s}
+  #ui button,#ui input{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.18);color:#fff;
+    border-radius:999px;padding:8px 14px;font-size:14px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    outline:none;font-family:inherit;transition:all .3s}
+  #ui button{cursor:pointer}
+  #ui button:hover{background:rgba(255,255,255,.18)}
+  #ui button.on{background:rgba(120,170,255,.35);border-color:rgba(160,200,255,.7);box-shadow:0 0 14px rgba(120,170,255,.6)}
+  #ui input{width:170px}
+  #ui input::placeholder{color:rgba(255,255,255,.5)}
+  #start{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:radial-gradient(circle at center,rgba(10,20,50,.35),rgba(0,0,0,.75));cursor:pointer;transition:opacity 1.2s;z-index:5}
+  #start h1{font-weight:200;font-size:clamp(34px,7vw,72px);letter-spacing:.35em;margin:0 0 0 .35em;
+    text-shadow:0 0 30px rgba(120,170,255,.9)}
+  #start .go{margin-top:34px;font-size:18px;letter-spacing:.3em;animation:pulse 2s infinite}
+  #start .tip{margin-top:16px;font-size:13px;opacity:.55;letter-spacing:.1em}
+  @keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="brand">粒子宇宙 · 一个 HTML 文件 · 零外部依赖 · Claude 现场编写</div>
+<div id="cap"></div>
+<div id="stats"></div>
+<div id="ui"></div>
+<div id="start">
+  <h1>粒子宇宙</h1>
+  <div class="go">✦ 点击任意处进入 ✦</div>
+  <div class="tip">建议打开声音 · 全屏观看更震撼</div>
+</div>
+
+<script>
+(() => {
+"use strict";
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const DPR = Math.min(window.devicePixelRatio || 1, 2);
+let W = 0, H = 0, S = 1, cur = null;
+
+const SMALL = Math.min(innerWidth, innerHeight) < 700;
+const N = SMALL ? 4500 : 9000;
+
+// ---------- particle state ----------
+const px=new Float32Array(N),py=new Float32Array(N),pz=new Float32Array(N);
+const vx=new Float32Array(N),vy=new Float32Array(N),vz=new Float32Array(N);
+const tx=new Float32Array(N),ty=new Float32Array(N),tz=new Float32Array(N);
+const cr=new Float32Array(N),cg=new Float32Array(N),cb=new Float32Array(N);
+const tr=new Float32Array(N),tg=new Float32Array(N),tb=new Float32Array(N);
+const kk=new Float32Array(N),ph=new Float32Array(N);
+const perm=new Uint32Array(N);
+for(let i=0;i<N;i++){
+  const a=Math.random()*6.2832,b=Math.acos(Math.random()*2-1),r=4+Math.random()*4;
+  px[i]=r*Math.sin(b)*Math.cos(a);py[i]=r*Math.cos(b);pz[i]=r*Math.sin(b)*Math.sin(a);
+  cr[i]=cg[i]=cb[i]=120; kk[i]=0.008+Math.random()*0.016; ph[i]=Math.random()*6.2832; perm[i]=i;
+}
+
+const stars=[];
+function makeStars(){stars.length=0;for(let i=0;i<260;i++)stars.push([Math.random()*W,Math.random()*H,Math.random()*1.3+.2,Math.random()*6.28]);}
+
+function resize(){
+  W=innerWidth;H=innerHeight;cv.width=W*DPR|0;cv.height=H*DPR|0;
+  cv.style.width=W+'px';cv.style.height=H+'px';ctx.setTransform(DPR,0,0,DPR,0,0);
+  S=Math.min(W,H)*0.36;ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);makeStars();
+}
+resize();
+addEventListener('resize',()=>{resize();if(cur&&cur.isText)setShape(cur,true);});
+
+// ---------- helpers ----------
+function gauss(){const u=1-Math.random(),v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(6.2832*v);}
+function hsl(h,s,l){h=((h%360)+360)%360;s/=100;l/=100;const k=n=>(n+h/30)%12,a=s*Math.min(l,1-l),
+  f=n=>l-a*Math.max(-1,Math.min(k(n)-3,Math.min(9-k(n),1)));return[255*f(0),255*f(8),255*f(4)];}
+function lerp3(a,b,t){return[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];}
+
+// ---------- shapes ----------
+const tc=document.createElement('canvas');tc.width=1200;tc.height=420;
+const tctx=tc.getContext('2d',{willReadFrequently:true});
+function textShape(str,cap,label){
+  return {name:label||str,isText:true,tilt:0,cap,gen(put){
+    tctx.clearRect(0,0,1200,420);
+    const fam='"PingFang SC","Microsoft YaHei","Hiragino Sans GB","Helvetica Neue",Arial,sans-serif';
+    let fs=300;tctx.font=`900 ${fs}px ${fam}`;
+    const w=tctx.measureText(str).width||1;fs=Math.min(300,fs*1100/w);
+    tctx.font=`900 ${fs}px ${fam}`;tctx.fillStyle='#fff';tctx.textAlign='center';tctx.textBaseline='middle';
+    tctx.fillText(str,600,215);
+    const d=tctx.getImageData(0,0,1200,420).data,pts=[];
+    for(let y=0;y<420;y+=2)for(let x=0;x<1200;x+=2)if(d[(y*1200+x)*4+3]>128)pts.push(x,y);
+    if(!pts.length)pts.push(600,210);
+    const fit=Math.min(1,(W*0.46)/(1.58*S)),h0=Math.random()*360;
+    for(let i=0;i<N;i++){
+      const j=(Math.random()*pts.length/2|0)*2;
+      const x=(pts[j]-600+Math.random()*2)/380*fit,y=(pts[j+1]-210+Math.random()*2)/380*fit;
+      const c=hsl(h0+(x/fit+1.6)*75,95,64);
+      put(i,x,y,gauss()*0.035,c[0],c[1],c[2]);
+    }
+  }};
+}
+
+function galaxy(put){
+  const core=[255,225,170],edge=[110,150,255];
+  for(let i=0;i<N;i++){
+    if(Math.random()<0.17){
+      const r=0.17;put(i,gauss()*r,gauss()*r*0.55,gauss()*r,255,215+Math.random()*30,160);continue;
+    }
+    const arm=i%3,r=0.08+Math.pow(Math.random(),0.8)*1.3;
+    const a=arm*2.0944+r*3.3+gauss()*0.26;
+    const x=Math.cos(a)*r+gauss()*0.03,z=Math.sin(a)*r+gauss()*0.03,y=gauss()*0.04*(1.5-r);
+    let c=lerp3(core,edge,Math.min(1,r/1.2));
+    if(Math.random()<0.04)c=[255,110,175];
+    put(i,x,y,z,c[0],c[1],c[2]);
+  }
+}
+
+function planet(put){
+  for(let i=0;i<N;i++){
+    const u=Math.random()*2-1,th=Math.random()*6.2832,q=Math.sqrt(1-u*u);
+    let x=q*Math.cos(th),y=u,z=q*Math.sin(th),c;
+    if(Math.random()<0.12){const R=1.08;put(i,x*R*.95,y*R*.95,z*R*.95,150,160,185);continue;}
+    const n=Math.sin(3*x+1.3)*Math.cos(2.5*y+0.4)+0.6*Math.sin(4*z+0.7*x)+0.3*Math.sin(5*y+2*z)+0.25*Math.cos(7*x-3*z);
+    if(Math.abs(y)>0.87)c=[230,240,255];
+    else if(n>0.35)c=n>0.95?[170,140,90]:[60+Math.random()*50,175,85];
+    else c=[25,85+Math.random()*30,225];
+    put(i,x*.95,y*.95,z*.95,c[0],c[1],c[2]);
+  }
+}
+
+function dna(put){
+  const L=1.2,R=0.42,turns=4.4,rungs=36;
+  const pairs=[[[255,90,90],[90,255,140]],[[90,255,140],[255,90,90]],[[255,210,70],[90,160,255]],[[90,160,255],[255,210,70]]];
+  for(let i=0;i<N;i++){
+    if(Math.random()<0.6){
+      const t=(Math.random()*2-1)*L,s=Math.random()<.5?0:Math.PI,a=t*turns+s;
+      const c=s?[90,200,255]:[255,100,210];
+      put(i,R*Math.cos(a)+gauss()*.018,t,R*Math.sin(a)+gauss()*.018,c[0],c[1],c[2]);
+    }else{
+      const ri=Math.random()*rungs|0,t=-L+(ri+0.5)*2*L/rungs,a=t*turns,f=Math.random();
+      const c=pairs[ri%4][f<0.5?0:1];
+      put(i,R*Math.cos(a)*(1-2*f),t+gauss()*.006,R*Math.sin(a)*(1-2*f),c[0],c[1],c[2]);
+    }
+  }
+}
+
+function lorenz(put){
+  let x=0.1,y=0,z=0;const dt=0.004;
+  const step=()=>{const dx=10*(y-x),dy=x*(28-z)-y,dz=x*y-8/3*z;x+=dx*dt;y+=dy*dt;z+=dz*dt;return Math.hypot(dx,dy,dz);};
+  for(let s=0;s<1500;s++)step();
+  for(let i=0;i<N;i++){
+    let sp=0;for(let s=0;s<3;s++)sp=step();
+    const c=hsl(205-Math.min(sp,140)/140*185,95,60);
+    put(i,x/21,-(z-25)/21,y/21,c[0],c[1],c[2]);
+  }
+}
+
+function heart(put){
+  for(let i=0;i<N;i++){
+    const t=Math.random()*6.2832,s=Math.sqrt(Math.random());
+    const x=16*Math.pow(Math.sin(t),3)/17*s;
+    const y=-(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))/17*s+0.08;
+    const z=(Math.random()-0.5)*0.55*Math.sqrt(Math.max(0,1-s*s));
+    const c=hsl(338+Math.random()*28,95,52+s*12);
+    put(i,x,y,z,c[0],c[1],c[2]);
+  }
+}
+
+const shapes=[
+  textShape('你好，Toby',`${N} 颗粒子 · 每一颗都在独立计算自己的轨迹`,'你好'),
+  {name:'星系',tilt:0.55,cap:'旋臂星系 · 移动鼠标或手指，你就是一股引力',gen:galaxy},
+  {name:'行星',tilt:0.35,cap:'一颗蓝色行星 · 海洋、大陆、冰盖与流云',gen:planet},
+  {name:'DNA',tilt:0.08,cap:'生命的双螺旋 · 每一级台阶都是一对碱基',gen:dna},
+  {name:'混沌',tilt:0.25,cap:'洛伦兹吸引子 · 蝴蝶效应：混沌之中自有秩序',gen:lorenz},
+  {name:'心',tilt:0.1,cap:'点一下屏幕，引爆一切 —— 它们总会找回彼此',gen:heart},
+  textShape('想象 ∞ 无限','在下方输入任何文字，看粒子为你写出来','∞'),
+];
+
+// ---------- audio (generated live, no files) ----------
+let AC=null,master=null,delay=null,soundOn=true;
+function initAudio(){
+  try{
+    AC=new (window.AudioContext||window.webkitAudioContext)();
+    master=AC.createGain();master.gain.value=0.5;
+    const comp=AC.createDynamicsCompressor();master.connect(comp);comp.connect(AC.destination);
+    delay=AC.createDelay(1);delay.delayTime.value=0.37;
+    const fb=AC.createGain();fb.gain.value=0.45;const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=2400;
+    delay.connect(lp);lp.connect(fb);fb.connect(delay);lp.connect(master);
+    const pg=AC.createGain();pg.gain.value=0.025;const pf=AC.createBiquadFilter();pf.type='lowpass';pf.frequency.value=380;
+    pf.connect(pg);pg.connect(master);
+    [65.41,65.9,98.0,130.8].forEach(f=>{const o=AC.createOscillator();o.type='sawtooth';o.frequency.value=f;o.connect(pf);o.start();});
+  }catch(e){AC=null;}
+}
+function note(freq,when,dur=1.6,vol=0.1,type='sine'){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=freq;
+  g.gain.setValueAtTime(0,when);g.gain.linearRampToValueAtTime(vol,when+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001,when+dur);
+  o.connect(g);g.connect(master);g.connect(delay);o.start(when);o.stop(when+dur+0.05);
+}
+const PENT=[0,2,4,7,9];
+function pent(n){const o=Math.floor(n/5),s=PENT[((n%5)+5)%5];return 261.63*Math.pow(2,o+s/12);}
+function arp(){
+  if(!AC)return;const t=AC.currentTime+0.03,b=(Math.random()*4|0)-2;
+  for(let i=0;i<6;i++)note(pent(b+i*2),t+i*0.11,2.4,0.075);
+  note(pent(b-5),t,3.8,0.09,'triangle');
+}
+function boom(){
+  if(!AC)return;const t=AC.currentTime;
+  const o=AC.createOscillator(),g=AC.createGain();o.type='sine';
+  o.frequency.setValueAtTime(110,t);o.frequency.exponentialRampToValueAtTime(28,t+0.8);
+  g.gain.setValueAtTime(0.5,t);g.gain.exponentialRampToValueAtTime(0.0001,t+1.1);
+  o.connect(g);g.connect(master);o.start(t);o.stop(t+1.2);
+  for(let i=0;i<9;i++)note(pent(12+(Math.random()*10|0)),t+0.05+i*0.06,1.4,0.04,'triangle');
+}
+
+// ---------- shape switching ----------
+let idx=0,auto=true,nextAt=0,started=false;
+const capEl=document.getElementById('cap');
+function showCap(s){capEl.style.opacity=0;setTimeout(()=>{capEl.textContent=s||'';capEl.style.opacity=s?0.85:0;},500);}
+function setShape(sh,quiet){
+  cur=sh;
+  for(let i=N-1;i>0;i--){const j=Math.random()*(i+1)|0,t=perm[i];perm[i]=perm[j];perm[j]=t;}
+  sh.gen((j,x,y,z,r,g,b)=>{const i=perm[j];tx[i]=x;ty[i]=y;tz[i]=z;tr[i]=r;tg[i]=g;tb[i]=b;});
+  if(!quiet){showCap(sh.cap);arp();}
+  document.querySelectorAll('#ui button[data-i]').forEach(b=>b.classList.toggle('on',+b.dataset.i===shapes.indexOf(sh)));
+}
+function explode(){
+  for(let i=0;i<N;i++){
+    const d=Math.hypot(px[i],py[i],pz[i])+0.05,s=(0.04+Math.random()*0.11)/d;
+    vx[i]+=px[i]*s+gauss()*0.025;vy[i]+=py[i]*s+gauss()*0.025;vz[i]+=pz[i]*s+gauss()*0.025;
+  }
+  boom();
+}
+function bump(){nextAt=performance.now()+16000;}
+
+// ---------- UI ----------
+const ui=document.getElementById('ui');
+shapes.forEach((s,i)=>{const b=document.createElement('button');b.textContent=s.name;b.dataset.i=i;
+  b.onclick=()=>{idx=i;setShape(s);bump();};ui.appendChild(b);});
+const inp=document.createElement('input');inp.placeholder='输入任何文字，按回车';inp.maxLength=12;
+inp.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter'&&inp.value.trim()){
+  setShape(textShape(inp.value.trim(),'这是你的字 · 由 '+N+' 颗星光写成'));nextAt=performance.now()+20000;inp.blur();}});
+ui.appendChild(inp);
+const mk=(t,f)=>{const b=document.createElement('button');b.textContent=t;b.onclick=f;ui.appendChild(b);return b;};
+mk('💥',()=>{explode();bump();});
+const sb=mk('🔊',()=>{soundOn=!soundOn;sb.textContent=soundOn?'🔊':'🔇';
+  if(master)master.gain.setTargetAtTime(soundOn?0.5:0,AC.currentTime,0.1);});
+mk('⛶',()=>{const d=document;if(!d.fullscreenElement)(d.documentElement.requestFullscreen||function(){}).call(d.documentElement);else d.exitFullscreen();});
+
+document.getElementById('start').addEventListener('click',function(){
+  initAudio();if(AC&&AC.resume)AC.resume();
+  this.style.opacity=0;setTimeout(()=>this.remove(),1200);
+  ui.style.opacity=1;started=true;idx=0;setShape(shapes[0]);nextAt=performance.now()+9000;
+});
+
+// ---------- pointer ----------
+const mouse={x:-1e5,y:-1e5,on:false};let down=null,lastNote=0;
+cv.addEventListener('pointermove',e=>{
+  const dx=e.clientX-mouse.x,dy=e.clientY-mouse.y;mouse.x=e.clientX;mouse.y=e.clientY;mouse.on=true;
+  const now=performance.now();
+  if(AC&&started&&now-lastNote>150&&dx*dx+dy*dy>60){lastNote=now;note(pent(Math.floor((1-mouse.y/H)*14)),AC.currentTime,1.3,0.035);}
+});
+cv.addEventListener('pointerleave',()=>{mouse.on=false;});
+cv.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY,t:performance.now()};mouse.x=e.clientX;mouse.y=e.clientY;mouse.on=true;});
+cv.addEventListener('pointerup',e=>{
+  if(down&&Math.hypot(e.clientX-down.x,e.clientY-down.y)<12&&performance.now()-down.t<350&&started){explode();bump();}
+  down=null;if(e.pointerType!=='mouse')mouse.on=false;
+});
+addEventListener('keydown',e=>{
+  if(!started)return;
+  if(e.code==='Space'){explode();bump();e.preventDefault();}
+  if(e.key==='ArrowRight'){idx=(idx+1)%shapes.length;setShape(shapes[idx]);bump();}
+  if(e.key==='ArrowLeft'){idx=(idx-1+shapes.length)%shapes.length;setShape(shapes[idx]);bump();}
+});
+
+// ---------- main loop ----------
+setShape(shapes[1],true);
+let ry=0,tilt=0.4,fps=60,lastT=performance.now(),statT=0;
+const statEl=document.getElementById('stats');
+function frame(now){
+  const dtm=now-lastT;lastT=now;fps=fps*0.95+(1000/Math.max(dtm,1))*0.05;
+  const t=now/1000;
+  if(started&&auto&&now>nextAt){idx=(idx+1)%shapes.length;setShape(shapes[idx]);nextAt=now+9000;}
+
+  if(cur.isText){const base=Math.round(ry/6.2832)*6.2832;ry+=(base+Math.sin(t*0.6)*0.32-ry)*0.03;}
+  else ry+=0.0035;
+  tilt+=(cur.tilt-tilt)*0.03;
+  const cy=Math.cos(ry),sy=Math.sin(ry),ct=Math.cos(tilt),st=Math.sin(tilt);
+
+  ctx.globalCompositeOperation='source-over';ctx.fillStyle='rgba(0,0,10,0.27)';ctx.fillRect(0,0,W,H);
+  for(const s of stars){const a=0.25+0.25*Math.sin(t*1.5+s[3]);ctx.fillStyle=`rgba(200,215,255,${a})`;ctx.fillRect(s[0],s[1],s[2],s[2]);}
+
+  ctx.globalCompositeOperation='lighter';
+  const R=Math.min(W,H)*0.13,R2=R*R,cx0=W/2,cy0=H/2,mon=mouse.on;
+  for(let i=0;i<N;i++){
+    const w=Math.sin(t*1.3+ph[i])*0.004;
+    vx[i]=(vx[i]+(tx[i]+w-px[i])*kk[i])*0.9;
+    vy[i]=(vy[i]+(ty[i]-w-py[i])*kk[i])*0.9;
+    vz[i]=(vz[i]+(tz[i]+w-pz[i])*kk[i])*0.9;
+    px[i]+=vx[i];py[i]+=vy[i];pz[i]+=vz[i];
+
+    const x1=px[i]*cy-pz[i]*sy,z1=px[i]*sy+pz[i]*cy;
+    const y2=py[i]*ct-z1*st,z2=py[i]*st+z1*ct;
+    const f=3.2/(3.2+z2);if(f<=0||f>6)continue;
+    const sx=cx0+x1*S*f,sy2=cy0+y2*S*f;
+
+    if(mon){
+      const dx=sx-mouse.x,dy=sy2-mouse.y,d2=dx*dx+dy*dy;
+      if(d2<R2){
+        const d=Math.sqrt(d2)+0.001,s=0.022*(1-d2/R2);
+        const a=dx/d*s,b=dy/d*s,yy=b*ct,zz=-b*st;
+        vx[i]+=a*cy+zz*sy;vy[i]+=yy;vz[i]+=-a*sy+zz*cy;
+      }
+    }
+    cr[i]+=(tr[i]-cr[i])*0.04;cg[i]+=(tg[i]-cg[i])*0.04;cb[i]+=(tb[i]-cb[i])*0.04;
+    const br=Math.min(1,0.25+0.45*f)*0.85,sz=Math.max(0.7,1.6*f*f);
+    ctx.fillStyle=`rgb(${cr[i]*br|0},${cg[i]*br|0},${cb[i]*br|0})`;
+    ctx.fillRect(sx,sy2,sz,sz);
+  }
+  if(now-statT>500){statT=now;statEl.textContent=`粒子 ${N} · ${fps|0} fps · 声音实时合成 · 0 张图片 · 0 个音频文件`;}
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

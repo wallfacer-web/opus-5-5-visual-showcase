@@ -1,0 +1,2818 @@
+<meta charset="utf-8">
+<title>汴京一日</title>
+<meta name="description" content="受张择端《清明上河图》启发的交互式数字长卷">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* 布局：案头满屏，长卷是一条横向画布；控制件是小块漆色浮片，不长久遮挡画面 */
+:root {
+  --desk: #1c1712; --desk2: #2b2219; --lacquer: rgba(26, 20, 15, .86); --lacquer2: rgba(40, 31, 23, .92);
+  --cream: #f1e6cf; --cream2: #c9b998; --line: rgba(241, 230, 207, .16);
+  --paper: #e9dbbb; --ink: #2a241e; --cinnabar: #b0472f; --cinnabar2: #d2694c; --silk: #3f4c49;
+  --f-brush: 'Ma Shan Zheng', 'STKaiti', 'KaiTi', 'Kaiti SC', serif;
+  --f-text: 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; overflow: hidden; background: var(--desk); color: var(--cream); font-family: var(--f-text); -webkit-tap-highlight-color: transparent; }
+body { background: radial-gradient(ellipse at 50% 40%, var(--desk2), var(--desk) 70%); }
+#scroll { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+#scroll.dragging { cursor: grabbing; }
+button { font: inherit; color: inherit; }
+.chip { background: var(--lacquer); border: 1px solid var(--line); border-radius: 10px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+:focus-visible { outline: 2px solid var(--cinnabar2); outline-offset: 2px; }
+
+/* 顶部 */
+#topbar { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 16px; right: 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; pointer-events: none; transition: opacity .5s; z-index: 5; }
+#topbar > * { pointer-events: auto; }
+.brand { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; }
+.seal { width: 26px; height: 26px; border-radius: 4px; background: var(--cinnabar); color: #f6ead6; font-family: var(--f-brush); font-size: 18px; display: grid; place-items: center; line-height: 1; }
+.brand .t { font-family: var(--f-brush); font-size: 20px; letter-spacing: .08em; }
+#seg { display: flex; padding: 3px; gap: 2px; }
+#seg button { border: 0; background: transparent; padding: 6px 12px; border-radius: 7px; font-size: 13px; letter-spacing: .06em; cursor: pointer; color: var(--cream2); }
+#seg button[aria-pressed="true"] { background: var(--cinnabar); color: #fbf1e1; }
+#region { font-size: 13px; letter-spacing: .2em; padding: 7px 12px; color: var(--cream2); }
+#region:empty { display: none; }
+.spacer { flex: 1; }
+.ibtn { border: 1px solid var(--line); background: var(--lacquer); border-radius: 9px; padding: 6px 11px; font-size: 13px; cursor: pointer; letter-spacing: .05em; }
+.ibtn:hover { background: var(--lacquer2); }
+
+/* 字幕 */
+#caption { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 128px); max-width: min(680px, calc(100vw - 32px)); padding: 10px 18px; font-size: 16px; line-height: 1.7; text-align: center; opacity: 0; transition: opacity .7s, bottom .4s; pointer-events: none; z-index: 4; text-wrap: balance; }
+#caption.on { opacity: 1; }
+body.barHidden #caption { bottom: calc(env(safe-area-inset-bottom, 0px) + 74px); }
+
+/* 底部：小地图与控制条 */
+#bottom { position: fixed; left: 16px; right: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 5; pointer-events: none; transition: transform .45s, opacity .45s; }
+#bottom > * { pointer-events: auto; }
+#miniWrap { position: relative; padding: 5px; border-radius: 8px; }
+#mini { display: block; cursor: pointer; border-radius: 3px; touch-action: none; }
+#bar { display: flex; align-items: center; gap: 4px; padding: 5px; flex-wrap: wrap; justify-content: center; max-width: 100%; }
+#bar .b { border: 0; background: transparent; padding: 6px 9px; border-radius: 7px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; color: var(--cream); letter-spacing: .04em; white-space: nowrap; }
+#bar .b:hover { background: rgba(241, 230, 207, .09); }
+#bar .b[aria-pressed="true"] { color: #fbf1e1; background: rgba(176, 71, 47, .75); }
+#bar .sep { width: 1px; height: 18px; background: var(--line); margin: 0 3px; }
+#bar svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+#vol { width: 74px; accent-color: var(--cinnabar2); }
+body.barHidden #bar { opacity: 0; pointer-events: none; transform: translateY(8px); }
+#bar { transition: opacity .45s, transform .45s; }
+
+/* 热点 */
+#hots { position: fixed; inset: 0; pointer-events: none; z-index: 3; }
+.hs { position: absolute; left: 0; top: 0; pointer-events: auto; border: 0; background: transparent; padding: 0; cursor: pointer; display: flex; align-items: center; gap: 6px; transform: translate(-13px, -13px); }
+.hs .ring { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid rgba(176, 71, 47, .85); display: grid; place-items: center; background: rgba(233, 219, 187, .35); }
+.hs .ring::after { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--cinnabar); }
+.hs .lab { font-size: 12px; padding: 3px 8px; border-radius: 6px; background: var(--lacquer); color: var(--cream); letter-spacing: .08em; white-space: nowrap; opacity: 0; transition: opacity .3s; }
+.hs:hover .lab, .hs:focus-visible .lab, body.hintShow .hs .lab { opacity: 1; }
+body.hintSoft .hs { opacity: .55; }
+body.hintSoft .hs .ring { transform: scale(.78); }
+body.hintShow .hs .ring { animation: pulse 2.6s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(176, 71, 47, .35); } 50% { box-shadow: 0 0 0 7px rgba(176, 71, 47, 0); } }
+body.hintOff .hs { display: none; }
+
+/* 气泡对话 */
+#bubbles { position: fixed; inset: 0; pointer-events: none; z-index: 3; }
+.bub { position: absolute; left: 0; top: 0; background: #f4ead4; color: var(--ink); font-size: 13px; line-height: 1.45; padding: 5px 9px; border-radius: 8px; border: 1px solid rgba(42, 36, 30, .35); white-space: nowrap; transform: translate(-50%, -100%); box-shadow: 0 2px 8px rgba(0, 0, 0, .25); transition: opacity .3s; }
+.bub::after { content: ''; position: absolute; left: 50%; bottom: -5px; width: 8px; height: 8px; background: #f4ead4; border-right: 1px solid rgba(42, 36, 30, .35); border-bottom: 1px solid rgba(42, 36, 30, .35); transform: translateX(-50%) rotate(45deg); }
+
+/* 卡片 */
+.card { position: fixed; z-index: 8; padding: 16px 18px; max-width: min(360px, calc(100vw - 32px)); }
+.card h3 { margin: 0 0 6px; font-family: var(--f-brush); font-weight: 400; font-size: 24px; letter-spacing: .08em; }
+.card p { margin: 0 0 12px; font-size: 14px; line-height: 1.75; color: var(--cream2); }
+.card .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.pbtn { border: 0; background: var(--cinnabar); color: #fbf1e1; padding: 8px 16px; border-radius: 9px; cursor: pointer; font-size: 14px; letter-spacing: .08em; }
+.pbtn:hover { background: var(--cinnabar2); }
+.gbtn { border: 1px solid var(--line); background: transparent; padding: 8px 14px; border-radius: 9px; cursor: pointer; font-size: 14px; color: var(--cream); letter-spacing: .05em; }
+.gbtn:hover { background: rgba(241, 230, 207, .08); }
+#sceneCard { left: 16px; top: calc(env(safe-area-inset-top, 0px) + 70px); }
+#choice { left: 50%; top: calc(env(safe-area-inset-top, 0px) + 74px); transform: translateX(-50%); text-align: center; max-width: min(440px, calc(100vw - 32px)); }
+#choice .row { justify-content: center; }
+#endCard { left: 50%; top: calc(env(safe-area-inset-top, 0px) + 66px); transform: translateX(-50%); text-align: center; width: max-content; max-width: calc(100vw - 32px); background: rgba(233, 219, 187, .93); color: var(--ink); border-color: rgba(42, 36, 30, .3); padding: 26px 24px 20px; }
+#endCard h2 { font-family: var(--f-brush); font-weight: 400; font-size: clamp(24px, 6.2vw, 46px); margin: 0 0 4px; letter-spacing: .06em; white-space: nowrap; }
+#endCard .by { font-size: 14px; letter-spacing: .12em; margin: 0 0 4px; color: #5a4d3f; }
+#endCard .note { font-size: 12px; color: #6d6052; margin: 0 0 16px; }
+#endCard .row { justify-content: center; }
+#endCard .gbtn { color: var(--ink); border-color: rgba(42, 36, 30, .3); }
+#endCard .gbtn:hover { background: rgba(42, 36, 30, .07); }
+
+/* 生长进度 */
+#growUI { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); display: flex; align-items: center; gap: 4px; padding: 6px; z-index: 6; flex-wrap: wrap; justify-content: center; max-width: calc(100vw - 32px); }
+#growUI .st { font-size: 13px; padding: 5px 10px; border-radius: 7px; color: rgba(241, 230, 207, .45); letter-spacing: .06em; transition: color .4s, background .4s; }
+#growUI .st.on { color: #fbf1e1; background: rgba(176, 71, 47, .7); }
+#growUI .st.done { color: var(--cream2); }
+
+#toast { position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 70px); transform: translateX(-50%); padding: 8px 14px; font-size: 13px; opacity: 0; transition: opacity .4s; pointer-events: none; z-index: 9; }
+#toast.on { opacity: 1; }
+#swipeHint { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 12px 18px; font-size: 15px; letter-spacing: .15em; z-index: 6; pointer-events: none; display: flex; align-items: center; gap: 10px; }
+#swipeHint svg { width: 40px; height: 18px; stroke: var(--cream); fill: none; stroke-width: 1.6; stroke-linecap: round; }
+
+/* 开场 */
+#intro { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px; transition: opacity 1s; background: radial-gradient(ellipse at 50% 45%, rgba(43, 34, 25, .2), rgba(20, 16, 12, .75) 75%); }
+#intro.out { opacity: 0; pointer-events: none; }
+.intro-in { text-align: center; max-width: 560px; }
+.scrollArt { position: relative; width: min(420px, 82vw); height: 64px; margin: 0 auto 26px; }
+.scrollArt .rod { position: absolute; top: 0; bottom: 0; width: 26px; border-radius: 13px; background: linear-gradient(90deg, #4a3523, #8a6644 45%, #5a4029); box-shadow: 0 6px 18px rgba(0, 0, 0, .5); }
+.scrollArt .rod::before, .scrollArt .rod::after { content: ''; position: absolute; left: 5px; right: 5px; height: 9px; background: #2f2219; border-radius: 3px; }
+.scrollArt .rod::before { top: -7px; } .scrollArt .rod::after { bottom: -7px; }
+.scrollArt .pap { position: absolute; left: 22px; right: 22px; top: 6px; bottom: 6px; background: linear-gradient(180deg, #3f4c49 0 6px, var(--paper) 6px calc(100% - 6px), #3f4c49 calc(100% - 6px)); }
+.scrollArt .pap::after { content: ''; position: absolute; inset: 6px 0; background: repeating-linear-gradient(90deg, rgba(42, 36, 30, 0) 0 30px, rgba(42, 36, 30, .1) 30px 31px, rgba(42, 36, 30, 0) 31px 47px); }
+.scrollArt .l { left: 0; } .scrollArt .r { right: 0; }
+#intro h1 { font-family: var(--f-brush); font-weight: 400; font-size: clamp(46px, 11vw, 84px); margin: 0; letter-spacing: .12em; line-height: 1.1; text-wrap: balance; }
+#intro .sub { font-size: clamp(15px, 3.6vw, 19px); letter-spacing: .3em; margin: 6px 0 18px; color: var(--cream2); }
+#intro .lede { font-size: 15px; line-height: 1.85; color: var(--cream2); margin: 0 auto 22px; max-width: 30em; }
+#intro .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+#intro .pbtn, #intro .gbtn { font-size: 16px; padding: 11px 22px; }
+#intro .fine { font-size: 12px; color: rgba(241, 230, 207, .55); margin-top: 18px; line-height: 1.7; }
+
+/* 建筑细看 */
+#detail { position: fixed; inset: 0; z-index: 12; display: grid; place-items: center; padding: 16px; background: rgba(18, 14, 10, .62); }
+#detail .dcard { width: min(860px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 16px; display: grid; gap: 12px; }
+#detail .dhead { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+#detail h3 { margin: 0; font-family: var(--f-brush); font-weight: 400; font-size: 26px; letter-spacing: .08em; }
+#dcv { width: 100%; height: auto; display: block; border-radius: 6px; background: var(--paper); }
+#dsteps { display: flex; gap: 6px; list-style: none; margin: 0; padding: 0; flex-wrap: wrap; }
+#dsteps li { font-size: 13px; padding: 5px 10px; border-radius: 7px; color: rgba(241, 230, 207, .5); border: 1px solid var(--line); }
+#dsteps li.on { color: #fbf1e1; background: rgba(176, 71, 47, .75); border-color: transparent; }
+#dsteps li.done { color: var(--cream2); }
+#dnote { font-size: 14px; color: var(--cream2); margin: 0; line-height: 1.7; min-height: 1.7em; }
+
+#info { left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: min(480px, calc(100vw - 32px)); max-height: calc(100vh - 40px); overflow: auto; z-index: 14; }
+#info ul { margin: 0 0 12px; padding-left: 1.2em; font-size: 14px; line-height: 1.8; color: var(--cream2); }
+
+@media (max-width: 640px) {
+  .brand .t { display: none; }
+  #region { display: none; }
+  #bar .b .tx { display: none; }
+  #bar .b.keep .tx { display: inline; }
+  #vol { width: 56px; }
+  #caption { font-size: 14.5px; bottom: calc(env(safe-area-inset-bottom, 0px) + 140px); }
+  #sceneCard { left: 16px; right: 16px; top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); max-width: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition-duration: .01s !important; animation: none !important; } }
+</style>
+
+<canvas id="scroll" aria-label="长卷画面：左右拖动游卷，滚轮或双指缩放"></canvas>
+
+<div id="topbar">
+  <div class="brand chip"><span class="seal" aria-hidden="true">汴</span><span class="t">汴京一日</span></div>
+  <div id="seg" class="chip" role="group" aria-label="观看方式">
+    <button id="mTour" aria-pressed="false">自动导览</button>
+    <button id="mFree" aria-pressed="false">自由游卷</button>
+  </div>
+  <span id="region" class="chip"></span>
+  <span class="spacer"></span>
+  <button id="infoBtn" class="ibtn">说明</button>
+</div>
+
+<div id="hots"></div>
+<div id="bubbles"></div>
+<div id="caption" class="chip" aria-live="polite"></div>
+
+<div id="growUI" class="chip" hidden>
+  <span class="st" data-i="0">淡墨勾地形</span><span class="st" data-i="1">立梁柱船身</span><span class="st" data-i="2">补瓦栏枝叶</span><span class="st" data-i="3">敷淡彩</span><span class="st" data-i="4">人物入画</span>
+  <button id="skipGrow" class="ibtn" style="margin-left:6px">直接看全卷</button>
+</div>
+
+<div id="bottom">
+  <div id="miniWrap" class="chip"><canvas id="mini" aria-label="全卷导航条：点击跳转" width="10" height="10"></canvas></div>
+  <div id="bar" class="chip" role="toolbar" aria-label="长卷控制">
+    <button class="b keep" id="bPlay" aria-label="暂停"><svg viewBox="0 0 16 16"><path id="playIcon" d="M5 3v10M11 3v10"/></svg><span class="tx">暂停</span></button>
+    <button class="b" id="bReplay"><svg viewBox="0 0 16 16"><path d="M3 8a5 5 0 1 0 1.6-3.7M3 2.5v3h3"/></svg><span class="tx">重播</span></button>
+    <span class="sep"></span>
+    <button class="b" id="bOut" aria-label="缩小"><svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="M5 7h4M10.5 10.5 14 14"/></svg></button>
+    <button class="b" id="bIn" aria-label="放大"><svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="M5 7h4M7 5v4M10.5 10.5 14 14"/></svg></button>
+    <button class="b keep" id="bFull"><svg viewBox="0 0 16 16"><path d="M1.5 5V2.5h3M14.5 5V2.5h-3M1.5 11v2.5h3M14.5 11v2.5h-3"/></svg><span class="tx">全卷</span></button>
+    <button class="b keep" id="bHero"><svg viewBox="0 0 16 16"><circle cx="8" cy="4.5" r="2"/><path d="M8 7v4M5 15l3-4 3 4M5 9h6"/></svg><span class="tx">送货人</span></button>
+    <button class="b" id="bHint" aria-pressed="false"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5"/><circle cx="8" cy="8" r="1.6"/></svg><span class="tx">可探索处</span></button>
+    <span class="sep"></span>
+    <button class="b" id="bSound" aria-pressed="false" aria-label="静音"><svg viewBox="0 0 16 16"><path d="M2.5 6h2.5l3.5-3v10l-3.5-3H2.5z"/><path id="sndWave" d="M11 5.5a3.5 3.5 0 0 1 0 5M12.8 3.8a6 6 0 0 1 0 8.4"/></svg></button>
+    <input id="vol" type="range" min="0" max="100" value="70" aria-label="音量">
+    <button class="b" id="bMotion" aria-pressed="false"><span class="tx">减少动态</span><svg viewBox="0 0 16 16" class="m-ic"><path d="M2 8h12M2 4.5h7M2 11.5h9"/></svg></button>
+  </div>
+</div>
+
+<div id="sceneCard" class="card chip" hidden role="dialog" aria-labelledby="scTitle">
+  <h3 id="scTitle"></h3>
+  <p id="scText"></p>
+  <div class="row"><button id="scAgain" class="gbtn">再看一次</button><button id="scClose" class="pbtn">返回长卷</button></div>
+</div>
+
+<div id="choice" class="card chip" hidden>
+  <h3>全卷已成</h3>
+  <p>跟随送货人走一趟，约三分半钟；或者自己拖动画卷，点开街市里的小故事。</p>
+  <div class="row"><button id="cTour" class="pbtn">开始自动导览</button><button id="cFree" class="gbtn">自由游卷</button></div>
+</div>
+
+<div id="endCard" class="card chip" hidden>
+  <h2>一卷展开，满城烟火。</h2>
+  <p class="by">Designed by Toby</p>
+  <p class="note">受张择端《清明上河图》启发的数字创作，人物故事为艺术虚构。</p>
+  <div class="row"><button id="eFree" class="pbtn">自由游卷</button><button id="eReplay" class="gbtn">重播导览</button><button id="eGrow" class="gbtn">重看生长</button></div>
+</div>
+
+<div id="info" class="card chip" hidden role="dialog" aria-labelledby="infoT">
+  <h3 id="infoT">关于这卷画</h3>
+  <p>受张择端《清明上河图》启发的数字创作，人物故事为艺术虚构。画面为程序绘制的原创长卷，不是原作复原；标题中的“一日”是叙事设计。</p>
+  <ul>
+    <li>拖动或左右滑动：游卷</li>
+    <li>滚轮、按钮或双指：缩放</li>
+    <li>朱红小圈：可点开的小故事</li>
+    <li>键盘：← → 移动，+ − 缩放，空格暂停，F 全卷，H 回到送货人</li>
+  </ul>
+  <div class="row"><button id="infoClose" class="pbtn">知道了</button></div>
+</div>
+
+<div id="toast" class="chip"></div>
+<div id="swipeHint" class="chip" hidden><svg viewBox="0 0 40 18"><path d="M3 9h34M8 4 3 9l5 5M32 4l5 5-5 5"/></svg>左右滑动游卷</div>
+
+<div id="detail" hidden role="dialog" aria-labelledby="dT">
+  <div class="dcard chip">
+    <div class="dhead"><h3 id="dT">建筑细看</h3><div class="row" style="display:flex;gap:8px"><button id="dAgain" class="gbtn">重新生长</button><button id="dClose" class="pbtn">返回长卷</button></div></div>
+    <canvas id="dcv" width="1280" height="760"></canvas>
+    <ol id="dsteps"><li>梁柱</li><li>屋檐斗拱</li><li>门窗栏杆</li><li>内部陈设</li><li>敷色</li></ol>
+    <p id="dnote"></p>
+  </div>
+</div>
+
+<div id="intro">
+  <div class="intro-in">
+    <div class="scrollArt" aria-hidden="true"><div class="pap"></div><div class="rod l"></div><div class="rod r"></div></div>
+    <h1>汴京一日</h1>
+    <div class="sub">会生长的清明上河图</div>
+    <p class="lede">案头一卷画慢慢展开。墨线先起，屋舍、船桥、街市随后成形。跟着一位推车送货的人，从城郊走到汴河，过虹桥，进城里。</p>
+    <div class="row">
+      <button id="startGrow" class="pbtn">观看生长</button>
+      <button id="startFull" class="gbtn">直接看全卷</button>
+    </div>
+    <p class="fine">受张择端《清明上河图》启发的数字创作，人物故事为艺术虚构。<br>点击后开启环境声，可随时静音。横屏观看更佳。</p>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ============ 基础：世界尺寸、色彩、随机、几何 ============ */
+const W = 9000, H = 1000;
+const COL = {
+  ink: '#2a241e', paper: '#e9dbbb', paperD: '#d9c49b', ochre: '#b5804f', ochreL: '#d4b083',
+  green: '#86997a', greenD: '#5d7357', cyan: '#7f9ea2', cyanL: '#a7bdba', red: '#a6492f',
+  wood: '#7d5f45', roof: '#5a6062', skin: '#e2c39c', white: '#f1e8d5', grey: '#8f8a7f', dark: '#3b3631'
+};
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+let rng = mulberry32(11270);
+const rnd = (a = 0, b = 1) => a + (b - a) * rng();
+const rndi = (a, b) => Math.floor(rnd(a, b + 1));
+const pick = a => a[Math.floor(rng() * a.length)];
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = t => t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
+const ease = t => t <= 0 ? 0 : t >= 1 ? 1 : (1 - Math.cos(Math.PI * t)) / 2;
+const easeOutQ = t => 1 - (1 - t) * (1 - t);
+
+/* ============ 图元构建：笔触 S、淡彩 F、文字 TX ============ */
+let TGT = [];
+const PR = TGT;                 // 主长卷图元
+const Bd = { lay: 0, gx: 0, oid: 0 };
+function obj(gx, lay) { Bd.gx = gx; Bd.lay = lay || 0; Bd.oid++; }
+function S(pts, w, a, st, col, tp) {
+  if (!pts || pts.length < 4) return null;
+  const p = { k: 0, pts, w: w == null ? 1.2 : w, a: a == null ? .85 : a, st: st == null ? 1 : st, col: col || COL.ink, tp: tp == null ? 1 : tp, lay: Bd.lay, gx: Bd.gx, oid: Bd.oid };
+  TGT.push(p); return p;
+}
+function F(pts, col, a, st, m) {
+  const p = { k: 1, pts, col, a: a == null ? .3 : a, st: st == null ? 3 : st, m: m == null ? 1 : m, lay: Bd.lay, gx: Bd.gx, oid: Bd.oid };
+  TGT.push(p); return p;
+}
+// 竖排文字（vert=true）或横排
+function TX(str, x, y, size, col, font, st, a, vert) {
+  vert = vert !== false;
+  const n = str.length;
+  const pts = vert ? [x - size, y - size, x + size, y + n * size * 1.12] : [x - n * size * .32, y - size, x + n * size * .32, y + size];
+  const p = { k: 2, str, x, y, size, col: col || COL.ink, font, a: a == null ? .9 : a, st: st == null ? 2 : st, lay: Bd.lay, gx: Bd.gx, oid: Bd.oid, pts, vert };
+  TGT.push(p); return p;
+}
+
+function seg(x0, y0, x1, y1, n) {
+  n = n || Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 24));
+  const a = []; for (let i = 0; i <= n; i++) { const t = i / n; a.push(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t); } return a;
+}
+function qd(x0, y0, cx, cy, x1, y1, n) {
+  n = n || 10; const a = [];
+  for (let i = 0; i <= n; i++) { const t = i / n, u = 1 - t; a.push(u * u * x0 + 2 * u * t * cx + t * t * x1, u * u * y0 + 2 * u * t * cy + t * t * y1); }
+  return a;
+}
+function cb(x0, y0, c1x, c1y, c2x, c2y, x1, y1, n) {
+  n = n || 14; const a = [];
+  for (let i = 0; i <= n; i++) { const t = i / n, u = 1 - t; a.push(u * u * u * x0 + 3 * u * u * t * c1x + 3 * u * t * t * c2x + t * t * t * x1, u * u * u * y0 + 3 * u * u * t * c1y + 3 * u * t * t * c2y + t * t * t * y1); }
+  return a;
+}
+function wob(a, amt) { if (!amt) return a; for (let i = 0; i < a.length; i++) a[i] += rnd(-amt, amt); return a; }
+function fnPts(f, x0, x1, step) {
+  const a = []; let x = x0;
+  for (; x <= x1 + 1e-6; x += step) a.push(x, f(x));
+  if (a[a.length - 2] < x1 - 1e-6) a.push(x1, f(x1));
+  return a;
+}
+function ell(cx, cy, rx, ry, n, j) {
+  n = n || 16; j = j || 0; const a = [];
+  for (let i = 0; i < n; i++) { const t = i / n * Math.PI * 2, r = 1 + (j ? rnd(-j, j) : 0); a.push(cx + Math.cos(t) * rx * r, cy + Math.sin(t) * ry * r); }
+  return a;
+}
+function interpK(K, x) {
+  if (x <= K[0][0]) return K[0][1];
+  for (let i = 1; i < K.length; i++) {
+    if (x <= K[i][0]) { const t = (x - K[i - 1][0]) / (K[i][0] - K[i - 1][0]); return K[i - 1][1] + (K[i][1] - K[i - 1][1]) * smooth(t); }
+  }
+  return K[K.length - 1][1];
+}
+
+/* ============ 预处理：包围盒、轮廓、生长时间 ============ */
+const WAVE = 36, STO = [0, 1.5, 3.0, 4.6], FIGOFF = 6.0;
+let GROW_END = 46;
+
+function prepPrim(p) {
+  const a = p.pts; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (let i = 0; i < a.length; i += 2) { const x = a[i], y = a[i + 1]; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  const pad = p.k === 0 ? p.w : 2;
+  p.bx0 = x0 - pad; p.bx1 = x1 + pad; p.by0 = y0 - pad; p.by1 = y1 + pad;
+  if (p.k === 0) {
+    const n = a.length / 2, cl = new Float32Array(n);
+    for (let i = 1; i < n; i++) cl[i] = cl[i - 1] + Math.hypot(a[i * 2] - a[i * 2 - 2], a[i * 2 + 1] - a[i * 2 - 1]);
+    p.cl = cl; p.len = cl[n - 1] || 0.001;
+    const L = new Float32Array(a.length), R = new Float32Array(a.length);
+    for (let i = 0; i < n; i++) {
+      const ia = Math.max(0, i - 1), ib = Math.min(n - 1, i + 1);
+      let tx = a[ib * 2] - a[ia * 2], ty = a[ib * 2 + 1] - a[ia * 2 + 1];
+      const l = Math.hypot(tx, ty) || 1; tx /= l; ty /= l;
+      const t = cl[i] / p.len;
+      const hw = p.w / 2 * (p.tp ? (0.28 + 0.72 * Math.pow(Math.sin(Math.PI * (0.05 + 0.9 * t)), 0.55)) : 1);
+      L[i * 2] = a[i * 2] - ty * hw; L[i * 2 + 1] = a[i * 2 + 1] + tx * hw;
+      R[i * 2] = a[i * 2] + ty * hw; R[i * 2 + 1] = a[i * 2 + 1] - tx * hw;
+    }
+    p.L = L; p.R = R;
+  }
+}
+function finalize(arr, timeFn) {
+  const cnt = new Map(), ord = new Map();
+  for (const p of arr) { const k = p.oid * 4 + p.st; cnt.set(k, (cnt.get(k) || 0) + 1); }
+  let end = 0;
+  for (const p of arr) {
+    prepPrim(p);
+    const k = p.oid * 4 + p.st; const o = ord.get(k) || 0; ord.set(k, o + 1);
+    const n = cnt.get(k); const sp = Math.min(0.07, 1.5 / n);
+    timeFn(p, o * sp);
+    if (p.t1 > end) end = p.t1;
+  }
+  return end;
+}
+function mainTime(p, off) {
+  p.t0 = p.gx / W * WAVE + STO[p.st] + off;
+  const d = p.k === 0 ? clamp(p.len / 240, .22, p.st === 0 ? 6 : 1.0) : 1.6;
+  p.t1 = p.t0 + d;
+}
+
+/* ============ 绘制图元 ============ */
+function polyP(a) { const P = new Path2D(); P.moveTo(a[0], a[1]); for (let i = 2; i < a.length; i += 2) P.lineTo(a[i], a[i + 1]); P.closePath(); return P; }
+function strokePath(c, p, f) {
+  const n = p.cl.length, L = p.L, R = p.R;
+  if (f >= 1) {
+    if (!p.P) {
+      const P = new Path2D(); P.moveTo(L[0], L[1]);
+      for (let i = 1; i < n; i++) P.lineTo(L[i * 2], L[i * 2 + 1]);
+      for (let i = n - 1; i >= 0; i--) P.lineTo(R[i * 2], R[i * 2 + 1]);
+      P.closePath(); p.P = P;
+    }
+    c.fill(p.P); return;
+  }
+  const tl = f * p.len; let k = 0;
+  while (k < n - 2 && p.cl[k + 1] < tl) k++;
+  const sg = (p.cl[k + 1] - p.cl[k]) || 1, u = clamp((tl - p.cl[k]) / sg, 0, 1);
+  c.beginPath(); c.moveTo(L[0], L[1]);
+  for (let i = 1; i <= k; i++) c.lineTo(L[i * 2], L[i * 2 + 1]);
+  c.lineTo(lerp(L[k * 2], L[k * 2 + 2], u), lerp(L[k * 2 + 1], L[k * 2 + 3], u));
+  c.lineTo(lerp(R[k * 2], R[k * 2 + 2], u), lerp(R[k * 2 + 1], R[k * 2 + 3], u));
+  for (let i = k; i >= 0; i--) c.lineTo(R[i * 2], R[i * 2 + 1]);
+  c.closePath(); c.fill();
+}
+function gco(c, m) { const v = m ? 'multiply' : 'source-over'; if (c.globalCompositeOperation !== v) c.globalCompositeOperation = v; }
+function drawPrim(c, p, g) {
+  if (g < p.t0) return;
+  const f = g >= p.t1 ? 1 : (g - p.t0) / (p.t1 - p.t0);
+  if (p.k === 0) {
+    gco(c, 0); c.globalAlpha = p.a; c.fillStyle = p.col; strokePath(c, p, f < 1 ? easeOutQ(f) : 1);
+  } else if (p.k === 1) {
+    gco(c, p.m); c.globalAlpha = p.a * (f < 1 ? smooth(f) : 1); c.fillStyle = p.col;
+    if (!p.P) p.P = polyP(p.pts); c.fill(p.P);
+  } else {
+    gco(c, 0); c.globalAlpha = p.a * (f < 1 ? smooth(f) : 1); c.fillStyle = p.col;
+    c.font = p.size + 'px ' + p.font; c.textAlign = 'center'; c.textBaseline = 'middle';
+    if (p.vert) { for (let i = 0; i < p.str.length; i++) c.fillText(p.str[i], p.x, p.y + i * p.size * 1.12); }
+    else c.fillText(p.str, p.x, p.y);
+  }
+}
+
+/* ============ 空间索引与瓦片缓存 ============ */
+const COLW = 200, NCOL = Math.ceil((W + 800) / COLW);
+const IDX = [[], [], []];
+let MARK, stampN = 0;
+function buildIndex() {
+  for (let l = 0; l < 3; l++) { IDX[l] = []; for (let i = 0; i < NCOL; i++) IDX[l].push([]); }
+  PR.forEach((p, i) => {
+    const c0 = clamp(Math.floor((p.bx0 + 400) / COLW), 0, NCOL - 1), c1 = clamp(Math.floor((p.bx1 + 400) / COLW), 0, NCOL - 1);
+    for (let c = c0; c <= c1; c++) IDX[p.lay][c].push(i);
+  });
+  MARK = new Uint32Array(PR.length);
+}
+function query(l, x0, x1) {
+  stampN++; const out = [];
+  const c0 = clamp(Math.floor((x0 + 400) / COLW), 0, NCOL - 1), c1 = clamp(Math.floor((x1 + 400) / COLW), 0, NCOL - 1);
+  for (let c = c0; c <= c1; c++) {
+    const L = IDX[l][c];
+    for (let j = 0; j < L.length; j++) {
+      const i = L[j]; if (MARK[i] === stampN) continue; MARK[i] = stampN;
+      const p = PR[i]; if (p.bx1 >= x0 && p.bx0 <= x1) out.push(i);
+    }
+  }
+  out.sort((a, b) => a - b); return out;
+}
+function drawRange(c, l, x0, x1, g) {
+  const ids = query(l, x0, x1);
+  for (let j = 0; j < ids.length; j++) drawPrim(c, PR[ids[j]], g);
+  gco(c, 0); c.globalAlpha = 1;
+}
+
+const LEVELS = [0.0625, 0.125, 0.25, 0.5, 1, 1.5, 2.2];
+const TPX = 1024;
+const tiles = new Map(), tmeta = new Map();
+let tileBudget = 0, frameNo = 0;
+function tileMeta(l, lv, i) {
+  const key = l + '|' + lv + '|' + i; let m = tmeta.get(key);
+  if (!m) {
+    const tw = TPX / lv; const ids = query(l, i * tw, (i + 1) * tw);
+    let end = 0; for (const id of ids) if (PR[id].t1 > end) end = PR[id].t1;
+    m = { ids, end, key }; tmeta.set(key, m);
+  }
+  return m;
+}
+function renderTile(l, lv, i, m) {
+  const tw = TPX / lv; const cv = document.createElement('canvas');
+  cv.width = TPX; cv.height = Math.ceil(H * lv);
+  const c = cv.getContext('2d');
+  c.setTransform(lv, 0, 0, lv, -i * tw * lv, 0);
+  c.lineJoin = 'round';
+  for (const id of m.ids) drawPrim(c, PR[id], 1e9);
+  return cv;
+}
+function evictTiles() {
+  if (tiles.size <= 44) return;
+  const arr = [...tiles.entries()].sort((a, b) => a[1].used - b[1].used);
+  for (let i = 0; i < arr.length - 36; i++) tiles.delete(arr[i][0]);
+}
+function clearTiles() { tiles.clear(); }
+// 渲染一个图层：完成的瓦片走缓存，仍在生长的区域直接绘制
+function renderLayer(c, l, vx0, vx1, eff, g, scale) {
+  if (eff > 2.25) { drawRange(c, l, vx0, vx1, g); return; }
+  let lv = LEVELS[LEVELS.length - 1];
+  for (const v of LEVELS) if (v >= eff * 0.98) { lv = v; break; }
+  const tw = TPX / lv, i0 = Math.floor(vx0 / tw), i1 = Math.floor(vx1 / tw);
+  let pend0 = null;
+  const flush = (a, b) => {
+    c.save(); c.beginPath(); c.rect(a * tw, -60, (b - a + 1) * tw, H + 120); c.clip();
+    drawRange(c, l, Math.max(vx0, a * tw), Math.min(vx1, (b + 1) * tw), g); c.restore();
+  };
+  for (let i = i0; i <= i1; i++) {
+    const m = tileMeta(l, lv, i);
+    let drawn = !m.ids.length;
+    if (!drawn && g >= m.end) {
+      let t = tiles.get(m.key);
+      if (!t && tileBudget > 0) { t = { cv: renderTile(l, lv, i, m), used: 0 }; tiles.set(m.key, t); tileBudget--; }
+      if (t) { t.used = frameNo; c.drawImage(t.cv, i * tw, 0, tw + 1.2 / scale, t.cv.height / lv); drawn = true; }
+    }
+    if (drawn) { if (pend0 !== null) { flush(pend0, i - 1); pend0 = null; } }
+    else if (pend0 === null) pend0 = i;
+  }
+  if (pend0 !== null) flush(pend0, i1);
+}
+
+/* ============ 地理：道路、河道、虹桥 ============ */
+const DX = 0.5, DY = -0.38;                 // 斜投影的进深方向（向右上）
+const ROADK = [[-400, 762], [0, 762], [1500, 752], [2600, 736], [4380, 724], [4980, 724], [6200, 730], [8400, 742], [9400, 746]];
+const roadY = x => interpK(ROADK, x);
+const RIVC = [[1240, 452], [1700, 462], [2300, 478], [3000, 498], [3800, 505], [4200, 522], [4680, 770], [4950, 905], [5300, 1040], [5700, 1190]];
+const RIVW = [[1240, 4], [1700, 38], [2300, 98], [4200, 108], [4680, 112], [5700, 125]];
+const rivC = x => interpK(RIVC, x), rivW = x => interpK(RIVW, x);
+const RIV0 = 1240, RIV1 = 5660;
+const BX0 = 4380, BX1 = 4980, BAPEX = 124;
+function deckY(x) { const u = clamp((x - BX0) / (BX1 - BX0), 0, 1); return 724 - BAPEX * Math.pow(Math.sin(Math.PI * u), 0.75); }
+function heroY(x) { if (x > BX0 && x < BX1) return deckY(x) - 6 * Math.min(1, (x - BX0) / 40, (BX1 - x) / 40); return roadY(x); }
+const font = { brush: "'Ma Shan Zheng','STKaiti','KaiTi',serif", serif: "'Noto Serif SC','Songti SC','SimSun',serif" };
+const WILLOWS = [];
+function revPts(a) { const o = []; for (let i = a.length - 2; i >= 0; i -= 2) o.push(a[i], a[i + 1]); return o; }   // 供动态柳丝摇动
+
+/* ============ 房屋 ============ */
+function house(x, yb, w, h, d, o) {
+  o = o || {}; obj(o.gx != null ? o.gx : x + w / 2, o.lay || 0);
+  const A = o.a != null ? o.a : 1, ink = COL.ink;
+  const dx = DX * d, dy = DY * d, ov = o.ov != null ? o.ov : Math.min(16, w * .12);
+  const rh = o.rh != null ? o.rh : (h * .48 + d * .2);
+  const eY = yb - h, roof = o.roof || 'hip';
+  const eL = [x - ov, eY + 1], eR = [x + w + ov, eY + 1], bR = [x + w + ov + dx, eY + 1 + dy];
+  let r0, r1, ry;
+  if (roof === 'pent') { ry = eY - rh; r0 = [x + dx * .3, ry]; r1 = [x + w + dx * .3, ry]; }
+  else {
+    ry = eY - rh + dy * .55;
+    const inset = roof === 'gable' ? -ov * .35 : Math.min(w * .2, d * .42);
+    r0 = [x + inset + dx * .55, ry]; r1 = [x + w - inset + dx * .55, ry];
+  }
+  const up = roof === 'thatch' ? 2 : 5;
+  const eave = t => [lerp(eL[0], eR[0], t), eY + 1 - up + (up + 2) * (1 - Math.pow(2 * t - 1, 2))];
+  // 遮挡（纸色）
+  F([x, yb + 1, x + w, yb + 1, x + w + dx, yb + dy + 1, bR[0], bR[1] - 3, r1[0] + 2, r1[1] - 3, r0[0] - 2, r0[1] - 3, eL[0], eL[1] - up], COL.paper, 1, 1, 0);
+  // 台基
+  if (o.base) {
+    S(seg(x - 6, yb + 6, x + w + 6, yb + 6), 1, .7 * A, 1);
+    S([x + w + 6, yb + 6, x + w + 6 + dx, yb + 6 + dy], .8, .5 * A, 1);
+    F([x - 6, yb, x + w + 6, yb, x + w + 6, yb + 6, x - 6, yb + 6], COL.grey, .25 * A, 3);
+  }
+  // 墙、柱、梁
+  S(seg(x, yb, x + w, yb), 1.1, .8 * A, 1);
+  S([x + w, yb, x + w + dx, yb + dy], .9, .7 * A, 1);
+  S([x + w + dx, yb + dy, x + w + dx, eY + dy + 3], .9, .6 * A, 1, ink, 0);
+  const bays = o.bays || Math.max(1, Math.round(w / 46)), bw = w / bays;
+  for (let i = 0; i <= bays; i++) S([x + i * bw, yb, x + i * bw, eY + 3], i === 0 || i === bays ? 1.5 : 1.2, .85 * A, 1, ink, 0);
+  S(seg(x, eY + 5, x + w, eY + 5), 1.2, .8 * A, 1);
+  S([x + w, eY + 5, x + w + dx, eY + 5 + dy], 1, .7 * A, 1);
+  // 屋顶轮廓
+  const ev = []; for (let i = 0; i <= 18; i++) { const p = eave(i / 18); ev.push(p[0], p[1]); }
+  if (roof === 'thatch') {
+    S(ev.slice(), 2.4, .85 * A, 1);
+    S(qd(eL[0], eL[1] - up, lerp(eL[0], r0[0], .5) - 3, lerp(eL[1], r0[1], .5), r0[0], r0[1]), 2, .85 * A, 1);
+    S(qd(eR[0], eR[1] - up, lerp(eR[0], r1[0], .5) + 3, lerp(eR[1], r1[1], .5), r1[0], r1[1]), 2, .85 * A, 1);
+    S(qd(r0[0], r0[1], (r0[0] + r1[0]) / 2, r0[1] - 4, r1[0], r1[1]), 2.6, .85 * A, 1);
+    S(qd(eR[0], eR[1] - up, (eR[0] + bR[0]) / 2 + 2, (eR[1] + bR[1]) / 2 + 2, bR[0], bR[1] - 2), 1.6, .75 * A, 1);
+    S([bR[0], bR[1] - 2, r1[0], r1[1]], 1.4, .7 * A, 1);
+  } else {
+    S(ev.slice(), 1.6, .9 * A, 1);
+    S(ev.map((v, i) => i % 2 ? v - 2.5 : v), .8, .6 * A, 2, ink, 0);
+    if (roof === 'pent') {
+      S(seg(r0[0], r0[1], r1[0], r1[1]), 1.3, .85 * A, 1);
+      S([eL[0], eL[1] - up, r0[0], r0[1]], 1.1, .8 * A, 1);
+      S([eR[0], eR[1] - up, r1[0], r1[1]], 1.1, .8 * A, 1);
+      S([eR[0], eR[1] - up, bR[0], bR[1] - 4], 1, .7 * A, 1);
+    } else {
+      S(seg(r0[0], r0[1], r1[0], r1[1]), 2.6, .9 * A, 1);
+      S(qd(eL[0], eL[1] - up, lerp(eL[0], r0[0], .5) + 3, lerp(eL[1], r0[1], .5) + 4, r0[0], r0[1]), 1.4, .85 * A, 1);
+      S(qd(eR[0], eR[1] - up, lerp(eR[0], r1[0], .5) - 3, lerp(eR[1], r1[1], .5) + 4, r1[0], r1[1]), 1.4, .85 * A, 1);
+      S(qd(eR[0], eR[1] - up, (eR[0] + bR[0]) / 2, (eR[1] + bR[1]) / 2 + 1, bR[0], bR[1] - 4), 1.2, .8 * A, 1);
+      S(qd(bR[0], bR[1] - 4, lerp(bR[0], r1[0], .5) + 2, lerp(bR[1], r1[1], .5) + 3, r1[0], r1[1]), 1.1, .7 * A, 1);
+      S(qd(r0[0], r0[1], r0[0] - 4, r0[1] - 4, r0[0] - 1, r0[1] - 9, 5), 1.8, .85 * A, 2);
+      S(qd(r1[0], r1[1], r1[0] + 4, r1[1] - 4, r1[0] + 1, r1[1] - 9, 5), 1.8, .85 * A, 2);
+    }
+  }
+  // 瓦垄 / 草顶纹
+  const v = [dx * (roof === 'pent' ? .3 : .55), 0];
+  const N = Math.max(4, Math.round((w + 2 * ov) / (roof === 'thatch' ? 6 : 4.6)));
+  const lz = r0[0] - v[0], rz = r1[0] - v[0];
+  for (let k = 1; k < N; k++) {
+    const t = k / N; const b = eave(t); const bx = b[0], by = b[1];
+    let s = 1;
+    if (bx < lz) s = (bx - eL[0]) / Math.max(1, lz - eL[0]); else if (bx > rz) s = (eR[0] - bx) / Math.max(1, eR[0] - rz);
+    s = clamp(s, 0, 1); if (s < .08) continue;
+    const ex = bx + v[0] * s, ey = by + (ry - by) * s;
+    if (roof === 'thatch') S(qd(bx, by, (bx + ex) / 2 + rnd(-2, 2), (by + ey) / 2, ex, ey, 4), .7, .45 * A, 2);
+    else S([bx, by - 1, ex, ey + 1], .65, .5 * A, 2);
+  }
+  // 立面细节
+  const types = o.front ? (Array.isArray(o.front) ? o.front : Array(bays).fill(o.front)) : Array(bays).fill('lattice');
+  for (let i = 0; i < bays; i++) {
+    const bx0 = x + i * bw, bx1 = bx0 + bw, t = types[i % types.length];
+    if (t === 'lattice') {
+      const y0 = yb - h * .74, y1 = yb - h * .3, ix0 = bx0 + 4, ix1 = bx1 - 4;
+      S([ix0, y0, ix1, y0, ix1, y1, ix0, y1, ix0, y0], .7, .65 * A, 2, ink, 0);
+      for (let xx = ix0 + 3.5; xx < ix1 - 1; xx += 3.5) S([xx, y0, xx, y1], .4, .45 * A, 2, ink, 0);
+      S([ix0, (y0 + y1) / 2, ix1, (y0 + y1) / 2], .4, .45 * A, 2, ink, 0);
+      S([bx0, y1 + 3, bx1, y1 + 3], .6, .5 * A, 2, ink, 0);
+      F([ix0, y0, ix1, y0, ix1, y1, ix0, y1], COL.dark, .08 * A, 3);
+    } else if (t === 'door') {
+      const y0 = yb - h * .78, ix0 = bx0 + 5, ix1 = bx1 - 5, mx = (ix0 + ix1) / 2;
+      S([ix0, yb, ix0, y0, ix1, y0, ix1, yb], .8, .7 * A, 2, ink, 0);
+      S([mx, y0, mx, yb], .6, .6 * A, 2, ink, 0);
+      for (let r = 1; r < 4; r++) S([ix0, y0 + (yb - y0) * r / 4, ix1, y0 + (yb - y0) * r / 4], .35, .35 * A, 2, ink, 0);
+      F([ix0, y0, ix1, y0, ix1, yb, ix0, yb], COL.wood, .3 * A, 3);
+    } else if (t === 'open' || t === 'shop' || t === 'cloth' || t === 'jars') {
+      F([bx0 + 1, eY + 6, bx1 - 1, eY + 6, bx1 - 1, yb, bx0 + 1, yb], COL.ink, .2 * A, 3);
+      S([bx0 + 2, eY + 14, bx1 - 2, eY + 14], .5, .4 * A, 2, ink, 0);
+      // 门帘
+      if (o.curtain) {
+        const cy = eY + 15; const cp = [];
+        for (let xx = bx0 + 1; xx <= bx1 - 1; xx += 4) cp.push(xx, cy + (Math.round((xx - bx0) / 4) % 2 ? 2 : 0));
+        S(cp, .7, .6 * A, 2);
+        F([bx0 + 1, eY + 6, bx1 - 1, eY + 6, bx1 - 1, cy, bx0 + 1, cy], o.curtain, .35 * A, 3);
+      }
+      if (t !== 'open') {
+        const cy = yb - 15;
+        S([bx0 + 3, cy, bx1 - 3, cy], 1.3, .85 * A, 2);
+        S([bx0 + 3, cy + 1, bx0 + 3, yb], .8, .7 * A, 2, ink, 0); S([bx1 - 3, cy + 1, bx1 - 3, yb], .8, .7 * A, 2, ink, 0);
+        S([bx0 + 3, cy + 7, bx1 - 3, cy + 7], .4, .4 * A, 2, ink, 0);
+        F([bx0 + 3, cy, bx1 - 3, cy, bx1 - 3, yb, bx0 + 3, yb], COL.paper, 1, 2, 0);
+        F([bx0 + 3, cy, bx1 - 3, cy, bx1 - 3, yb, bx0 + 3, yb], COL.wood, .32 * A, 3);
+        if (t === 'cloth') {
+          const cols = [COL.cyan, COL.red, COL.ochreL, COL.green, COL.white];
+          for (let xx = bx0 + 6, j = 0; xx < bx1 - 6; xx += 6, j++) {
+            S([xx, eY + 16, xx, cy - 2], .5, .6 * A, 2, ink, 0);
+            F([xx, eY + 16, xx + 4.5, eY + 16, xx + 4.5, cy - 4 - (j % 2) * 4, xx, cy - 4 - (j % 2) * 4], cols[j % cols.length], .55 * A, 3);
+          }
+          for (let xx = bx0 + 6; xx < bx1 - 8; xx += 8) { S(ell(xx + 3, cy - 2.5, 3.5, 2, 8), .6, .7 * A, 2); F(ell(xx + 3, cy - 2.5, 3.5, 2, 8), COL.ochreL, .5 * A, 3); }
+        } else if (t === 'jars') {
+          for (let xx = bx0 + 8; xx < bx1 - 6; xx += 9) { const jp = [xx - 3, cy, xx - 3.6, cy - 5, xx - 1.5, cy - 8, xx + 1.5, cy - 8, xx + 3.6, cy - 5, xx + 3, cy, xx - 3, cy]; S(jp, .7, .75 * A, 2); F(jp, COL.ochre, .4 * A, 3); }
+        } else {
+          for (let xx = bx0 + 7; xx < bx1 - 6; xx += 7) { S(ell(xx, cy - 2.6, 2.6, 2.2, 8), .6, .7 * A, 2); F(ell(xx, cy - 2.6, 2.6, 2.2, 8), COL.ochreL, .45 * A, 3); }
+        }
+      }
+    } else if (t === 'wall') {
+      const y0 = yb - h * .66, y1 = yb - h * .44, mx = (bx0 + bx1) / 2;
+      S([mx - 6, y0, mx + 6, y0, mx + 6, y1, mx - 6, y1, mx - 6, y0], .6, .6 * A, 2, ink, 0);
+      for (let xx = mx - 3; xx <= mx + 3; xx += 3) S([xx, y0, xx, y1], .4, .5 * A, 2, ink, 0);
+    }
+  }
+  // 招牌（只写通用行业字，不虚构店名）
+  if (o.sign) {
+    const sx = x + (o.signBay != null ? o.signBay : 0) * bw + 2, sy = eY + 10;
+    S([sx, sy, sx + 10, sy, sx + 10, sy + 30, sx, sy + 30, sx, sy], .8, .85 * A, 2, ink, 0);
+    F([sx, sy, sx + 10, sy, sx + 10, sy + 30, sx, sy + 30], COL.white, 1, 2, 0);
+    TX(o.sign, sx + 5, sy + 9, 7.4, COL.ink, font.serif, 2, .9);
+  }
+  // 淡彩
+  const roofPoly = ev.slice(); roofPoly.push(r1[0], r1[1], r0[0], r0[1]);
+  const roofCol = roof === 'thatch' ? COL.ochreL : COL.roof;
+  F(roofPoly, roofCol, (roof === 'thatch' ? .5 : .36) * A, 3);
+  F([eR[0], eR[1] - up, bR[0], bR[1] - 3, r1[0], r1[1]], roofCol, (roof === 'thatch' ? .6 : .52) * A, 3);
+  F([x, yb, x + w, yb, x + w, eY + 3, x, eY + 3], o.wall || COL.ochreL, .26 * A, 3);
+  F([x + w, yb, x + w + dx, yb + dy, x + w + dx, eY + dy + 3, x + w, eY + 3], COL.ochre, .32 * A, 3);
+  F([x, eY + 1, x + w, eY + 1, x + w, eY + 7, x, eY + 7], COL.ink, .12 * A, 3);
+  return { eY, ry, r0, r1, eL, eR, bR, top: Math.min(ry, r0[1]) };
+}
+// 两层楼：下层腰檐，上层带栏杆
+function tower2(x, yb, w, h1, h2, d, o) {
+  o = o || {};
+  house(x, yb, w, h1, d, Object.assign({}, o, { roof: 'pent', rh: 18, sign: o.sign }));
+  const ux = x + DX * d * .3 + 6, uyb = yb - h1 - 18 + DY * d * .3 * 0, uw = w - 12, ud = d * .72;
+  const r = house(ux, uyb, uw, h2, ud, Object.assign({}, o, { roof: o.roof2 || 'hip', front: 'lattice', sign: null, bays: o.bays2, base: false, curtain: null }));
+  // 平座栏杆
+  obj(x + w / 2, o.lay || 0);
+  S(seg(ux - 4, uyb - 12, ux + uw + 4, uyb - 12), 1, .8, 2);
+  S(seg(ux - 4, uyb - 3, ux + uw + 4, uyb - 3), .9, .75, 2);
+  for (let xx = ux - 2; xx <= ux + uw + 2; xx += 6) S([xx, uyb - 12, xx, uyb - 3], .5, .6, 2, COL.ink, 0);
+  F([ux - 4, uyb - 12, ux + uw + 4, uyb - 12, ux + uw + 4, uyb - 3, ux - 4, uyb - 3], COL.red, .22, 3);
+  return r;
+}
+// 彩楼欢门（入口前的装饰木架）
+function huanmen(x, yb, w, h) {
+  obj(x + w / 2, 0);
+  const top = yb - h;
+  S([x, yb, x, top], 1.5, .9, 1, COL.ink, 0); S([x + w, yb, x + w, top], 1.5, .9, 1, COL.ink, 0);
+  S(seg(x - 4, top + 20, x + w + 4, top + 20), 1.2, .85, 1);
+  S(qd(x - 6, top + 2, x + w / 2, top - 22, x + w + 6, top + 2), 1.3, .85, 1);
+  for (let i = 0; i <= 8; i++) { const t = i / 8; const px = x + w * t; S([px, top + 20, x + w / 2 + (px - x - w / 2) * .9, top - 8 - 12 * Math.sin(Math.PI * t)], .7, .65, 2); }
+  for (let i = 0; i < 8; i++) { const t = (i + .5) / 8; S([x + w * t - 6, top + 6, x + w * t + 6, top + 14], .5, .55, 2); S([x + w * t + 6, top + 6, x + w * t - 6, top + 14], .5, .55, 2); }
+  F(qd(x - 6, top + 2, x + w / 2, top - 22, x + w + 6, top + 2).concat([x + w + 4, top + 20, x - 4, top + 20]), COL.red, .2, 3);
+  F([x - 3, top + 18, x + w + 3, top + 18, x + w + 3, top + 23, x - 3, top + 23], COL.green, .35, 3);
+}
+
+/* ============ 树木 ============ */
+function willow(x, yb, h, o) {
+  o = o || {}; obj(x, o.lay || 0); const A = o.a != null ? o.a : 1;
+  const lean = o.lean != null ? o.lean : rnd(-.18, .18), tx = x + lean * h * .45, ty = yb - h * .42;
+  const c1 = cb(x - h * .025, yb, x - h * .03, yb - h * .15, tx - h * .03, ty + h * .1, tx - 2, ty, 8);
+  const c2 = cb(x + h * .025, yb, x + h * .03, yb - h * .15, tx + h * .03, ty + h * .1, tx + 2, ty, 8);
+  S(c1, Math.max(1.4, h * .012), .85 * A, 1); S(c2, Math.max(1.2, h * .01), .8 * A, 1);
+  for (let i = 0; i < 4; i++) { const t = rnd(.15, .8); const px = lerp(x, tx, t), py = lerp(yb, ty, t); S([px - 2, py, px + 1, py - 4], .7, .55 * A, 2); }
+  F(c1.concat(revPts(c2)), COL.wood, .25 * A, 3);
+  const n = o.limbs || 4, limbs = [];
+  for (let i = 0; i < n; i++) {
+    const ang = -Math.PI / 2 + (i - (n - 1) / 2) * .55 + rnd(-.2, .2), L = h * rnd(.32, .52);
+    const ex = tx + Math.cos(ang) * L, ey = ty + Math.sin(ang) * L * .85;
+    S(qd(tx, ty, tx + Math.cos(ang) * L * .5 + rnd(-6, 6), ty + Math.sin(ang) * L * .45 - 5, ex, ey, 6), Math.max(1, h * .008), .8 * A, 1);
+    limbs.push([tx, ty, ex, ey]);
+  }
+  const rec = { x, yb, h, lay: o.lay || 0, strands: [] };
+  const strands = [];
+  for (const l of limbs) {
+    const m = Math.round(h / 22) + 4;
+    for (let j = 0; j < m; j++) {
+      const t = rnd(.25, 1); const px = lerp(l[0], l[2], t), py = lerp(l[1], l[3], t);
+      const dir = px >= tx ? 1 : -1, len = h * rnd(.25, .62);
+      const pts = qd(px, py, px + dir * h * rnd(.04, .12), py - h * rnd(.02, .07), px + dir * h * rnd(.08, .16), py + len, 7);
+      strands.push(pts);
+      if (rec.strands.length < 10 && rng() < .35) rec.strands.push([px + dir * h * .1, py + len * .3, len * .6, dir]);
+    }
+  }
+  for (const s of strands) S(s, .55, .5 * A, 2);
+  for (const s of strands) S(s.slice(4), 3.2, .14 * A, 3, COL.greenD, 1);
+  if (o.sway !== false) WILLOWS.push(rec);
+}
+function tree(x, yb, h, o) {
+  o = o || {}; obj(x, o.lay || 0); const A = o.a != null ? o.a : 1;
+  const tw = h * .028, tx = x + rnd(-h * .06, h * .06), ty = yb - h * .45;
+  const c1 = cb(x - tw * 1.4, yb, x - tw, yb - h * .2, tx - tw * .7, ty + h * .1, tx - tw * .6, ty, 7);
+  const c2 = cb(x + tw * 1.4, yb, x + tw, yb - h * .2, tx + tw * .7, ty + h * .1, tx + tw * .6, ty, 7);
+  S(c1, Math.max(1.2, h * .011), .85 * A, 1); S(c2, Math.max(1.1, h * .01), .8 * A, 1);
+  S([x - tw * 2.5, yb + 1, x - tw * .5, yb - 2], .9, .6 * A, 1); S([x + tw * 2.5, yb + 1, x + tw * .5, yb - 2], .9, .6 * A, 1);
+  for (let i = 0; i < 5; i++) { const t = rnd(.1, .85); const px = lerp(x, tx, t) + rnd(-tw * .6, tw * .6), py = lerp(yb, ty, t); S(qd(px, py, px + 2, py - 3, px + rnd(-1, 1), py - 6, 3), .6, .5 * A, 2); }
+  F([x - tw * 1.4, yb, tx - tw * .6, ty, tx + tw * .6, ty, x + tw * 1.4, yb], COL.wood, .3 * A, 3);
+  const n = o.limbs || 4, ends = [];
+  for (let i = 0; i < n; i++) {
+    const ang = -Math.PI / 2 + (i - (n - 1) / 2) * .62 + rnd(-.15, .15), L = h * rnd(.28, .42);
+    const ex = tx + Math.cos(ang) * L, ey = ty + Math.sin(ang) * L;
+    S(qd(tx, ty, tx + Math.cos(ang) * L * .4, ty + Math.sin(ang) * L * .6, ex, ey, 6), Math.max(.9, h * .009), .8 * A, 1);
+    const sx = lerp(tx, ex, .6), sy = lerp(ty, ey, .6);
+    S([sx, sy, sx + Math.cos(ang + .6) * L * .35, sy + Math.sin(ang + .6) * L * .35], .7, .7 * A, 1);
+    ends.push([ex, ey]); ends.push([sx + Math.cos(ang + .6) * L * .3, sy + Math.sin(ang + .6) * L * .3]);
+  }
+  ends.push([tx, ty - h * .42]);
+  const kind = o.kind || 'dot';
+  for (const e of ends) {
+    const r = h * rnd(.11, .16), cx = e[0], cy = e[1];
+    const m = Math.round(r * 1.1) + 6;
+    for (let j = 0; j < m; j++) {
+      const a = rnd(0, Math.PI * 2), rr = Math.sqrt(rng()) * r, px = cx + Math.cos(a) * rr, py = cy + Math.sin(a) * rr * .75;
+      if (kind === 'dot') { const b = rnd(0, Math.PI); S([px, py, px + Math.cos(b) * 3, py + Math.sin(b) * 2], 1.6, .6 * A, 2); }
+      else { for (let q = -1; q <= 1; q++) { const b = Math.PI / 2 + q * .6; S([px, py, px + Math.cos(b) * 3.4, py + Math.sin(b) * 3.4], .7, .55 * A, 2); } }
+    }
+    F(ell(cx, cy, r * 1.15, r * .85, 12, .18), o.col || COL.greenD, .26 * A, 3);
+  }
+}
+function distTree(x, yb, h, a) {
+  obj(x, 0); a = a || .45;
+  S([x, yb, x + rnd(-1, 1), yb - h * .55], .9, .6 * a, 1, COL.ink, 0);
+  const cx = x, cy = yb - h * .7;
+  for (let j = 0; j < 7; j++) S([cx + rnd(-h * .22, h * .2), cy + rnd(-h * .2, h * .15), cx + rnd(-h * .2, h * .22), cy + rnd(-h * .2, h * .15)].map((v, i) => i === 2 ? v : v), 1.4, .45 * a, 2);
+  F(ell(cx, cy, h * .28, h * .25, 10, .2), COL.greenD, .3 * a, 3);
+}
+function tuft(x, y, s, a, lay) {
+  obj(x, lay || 0); s = s || 1; a = a || .55;
+  const n = rndi(3, 5);
+  for (let i = 0; i < n; i++) { const ang = -Math.PI / 2 + (i - (n - 1) / 2) * .38 + rnd(-.1, .1), L = rnd(5, 9) * s; S(qd(x, y, x + Math.cos(ang) * L * .5, y + Math.sin(ang) * L * .6, x + Math.cos(ang) * L, y + Math.sin(ang) * L, 4), .7, a, 2); }
+}
+function rock(x, y, s, lay) {
+  obj(x, lay || 0);
+  const p = [x - 10 * s, y, x - 8 * s, y - 7 * s, x - 2 * s, y - 10 * s, x + 6 * s, y - 8 * s, x + 11 * s, y - 2 * s, x + 12 * s, y];
+  S(p, 1.3, .8, 1); S([x - 3 * s, y - 8 * s, x, y - 3 * s, x + 4 * s, y], .6, .55, 2);
+  F(p, COL.grey, .3, 3);
+}
+function parasol(x, yb, h, r, o) {
+  o = o || {}; obj(x, o.lay || 0);
+  const ty = yb - h;
+  F([x - r, ty + 7, x - r * .45, ty - 5, x, ty - 8, x + r * .45, ty - 5, x + r, ty + 7, x + r * .5, ty + 11, x - r * .5, ty + 11], COL.paper, 1, 1, 0);
+  S([x, yb, x, ty - 8], 1.1, .85, 1, COL.ink, 0);
+  S(qd(x - r, ty + 7, x - r * .45, ty - 6, x, ty - 8, 6), 1.1, .85, 1);
+  S(qd(x, ty - 8, x + r * .45, ty - 6, x + r, ty + 7, 6), 1.1, .85, 1);
+  S(qd(x - r, ty + 7, x, ty + 13, x + r, ty + 7, 8), 1, .8, 1);
+  for (let k = 1; k < 6; k++) { const t = k / 6, rx = lerp(x - r, x + r, t), ryy = ty + 7 + 6 * Math.sin(Math.PI * t); S([x, ty - 8, rx, ryy], .5, .5, 2, COL.ink, 0); }
+  F([x - r, ty + 7, x - r * .45, ty - 5, x, ty - 8, x + r * .45, ty - 5, x + r, ty + 7, x + r * .5, ty + 11, x - r * .5, ty + 11], o.col || COL.grey, .14, 3);
+  F([x, ty - 8, x + r * .45, ty - 5, x + r, ty + 7, x + r * .5, ty + 11, x, ty + 12], COL.ink, .06, 3);
+}
+function table(x, y, w, o) {
+  o = o || {}; obj(x, o.lay || 0);
+  const t = y - 14;
+  S([x - w / 2, t, x + w / 2, t], 1.4, .85, 1); S([x - w / 2 + 3, t, x - w / 2 + 3, y], .8, .75, 1, COL.ink, 0); S([x + w / 2 - 3, t, x + w / 2 - 3, y], .8, .75, 1, COL.ink, 0);
+  S([x - w / 2 + 3 + 5, t - 4, x + w / 2 + 5, t - 4], .6, .4, 2);
+  F([x - w / 2, t, x + w / 2, t, x + w / 2 + 5, t - 4, x - w / 2 + 5, t - 4], COL.wood, .35, 3);
+  if (o.goods) for (let gx = x - w / 2 + 6; gx < x + w / 2 - 3; gx += 6) { S(ell(gx, t - 3, 2.5, 2, 7), .6, .7, 2); F(ell(gx, t - 3, 2.5, 2, 7), o.goods, .5, 3); }
+}
+function bench(x, y, w) {
+  obj(x, 0);
+  S([x - w / 2, y - 9, x + w / 2, y - 9], 1.4, .85, 1); S([x - w / 2 + 3, y - 9, x - w / 2 + 3, y], .7, .7, 1, COL.ink, 0); S([x + w / 2 - 3, y - 9, x + w / 2 - 3, y], .7, .7, 1, COL.ink, 0);
+  F([x - w / 2, y - 9, x + w / 2, y - 9, x + w / 2 + 3, y - 11, x - w / 2 + 3, y - 11], COL.wood, .35, 3);
+}
+function sacks(x, y, n, o) {
+  o = o || {}; obj(x, o.lay || 0);
+  let i = 0;
+  for (let row = 0; i < n; row++) {
+    const cnt = Math.max(1, 4 - row);
+    for (let j = 0; j < cnt && i < n; j++, i++) {
+      const sx = x + j * 13 + row * 6.5, sy = y - row * 7;
+      const p = ell(sx, sy - 4, 7, 4.2, 12, .06);
+      F(p, COL.paper, 1, 1, 0); S(p.concat(p.slice(0, 2)), .8, .8, 1); F(p, COL.ochreL, .45, 3);
+      S([sx + 4, sy - 7, sx + 6, sy - 2], .4, .5, 2);
+    }
+  }
+}
+function fence(x0, y0, x1, y1, o) {
+  o = o || {}; obj(x0, o.lay || 0);
+  const n = Math.round(Math.hypot(x1 - x0, y1 - y0) / 9);
+  for (let i = 0; i <= n; i++) { const px = lerp(x0, x1, i / n), py = lerp(y0, y1, i / n); S([px, py, px + rnd(-.5, .5), py - 13 - rnd(0, 2)], .8, .7, 1, COL.ink, 0); }
+  S(seg(x0, y0 - 5, x1, y1 - 5), .6, .6, 2); S(seg(x0, y0 - 10, x1, y1 - 10), .6, .6, 2);
+  F([x0, y0, x1, y1, x1, y1 - 12, x0, y0 - 12], COL.ochre, .12, 3);
+}
+function hills(x0, x1, base, ht, a) {
+  obj(x0, 0); const pts = [];
+  const n = Math.round((x1 - x0) / 40);
+  for (let i = 0; i <= n; i++) { const t = i / n; pts.push(lerp(x0, x1, t), base - ht * Math.pow(Math.sin(Math.PI * t), 1.4) * (0.75 + 0.25 * Math.sin(t * 9 + x0))); }
+  S(pts, 1.2, .3 * a, 0, COL.ink, 1);
+  F(pts.concat([x1, base, x0, base]), COL.cyan, .16 * a, 3);
+  for (let i = 0; i < n * 1.5; i++) { const t = rnd(.1, .9), px = lerp(x0, x1, t), py = base - ht * Math.pow(Math.sin(Math.PI * t), 1.4) * .7 + rnd(0, ht * .5); S([px, py, px + rnd(-3, 3), py + rnd(4, 9)], .6, .2 * a, 2); }
+}
+
+/* ============ 长卷构图 ============ */
+function riverBand() {
+  const top = x => rivC(x) - rivW(x), bot = x => rivC(x) + rivW(x);
+  // 河岸线（淡墨，按段生长）
+  for (let x = RIV0; x < RIV1; x += 260) {
+    const x1 = Math.min(RIV1, x + 260);
+    obj(x, 0);
+    const tp = fnPts(top, x, x1, 12).map((v, i) => i % 2 ? v + rnd(-.8, .8) : v);
+    S(tp.filter((v, i, a) => true), 1.5, .7, 0);
+    S(fnPts(xx => top(xx) + 5, x, x1, 16), .6, .3, 0);
+    if (!(x >= 2240 && x1 <= 4340)) {
+      const bp = fnPts(bot, x, x1, 12).filter((v, i, a) => true);
+      const cut = []; for (let i = 0; i < bp.length; i += 2) if (bp[i + 1] < H + 30) cut.push(bp[i], bp[i + 1]);
+      S(cut, 1.5, .7, 0);
+      const cut2 = []; for (let i = 0; i < bp.length; i += 2) if (bp[i + 1] < H + 30) cut2.push(bp[i], bp[i + 1] - 5);
+      S(cut2, .6, .3, 0);
+    }
+  }
+  // 水面淡彩
+  for (let x = RIV0; x < RIV1; x += 130) {
+    const x1 = Math.min(RIV1, x + 130); obj(x, 0);
+    const a = fnPts(top, x, x1, 20), b = fnPts(xx => Math.min(H + 20, bot(xx)), x, x1, 20);
+    F(a.concat(revPts(b)), COL.cyanL, .22, 3);
+    F(fnPts(xx => top(xx) + 2, x, x1, 20).concat(revPts(fnPts(xx => top(xx) + 26, x, x1, 20))), COL.cyan, .1, 3);
+  }
+  // 水纹
+  for (let x = RIV0 + 120; x < RIV1; x += rnd(38, 64)) {
+    const c = rivC(x), w = rivW(x); if (w < 20) continue;
+    const ang = Math.atan2(rivC(x + 6) - rivC(x - 6), 12), ca = Math.cos(ang), sa = Math.sin(ang);
+    const rows = Math.max(2, Math.round(w / 22));
+    obj(x, 0);
+    for (let j = 0; j < rows; j++) {
+      const off = -w * .82 + (j + rnd(.1, .9)) * (w * 1.64 / rows);
+      const px = x + rnd(-18, 18) - sa * off, py = c + off * ca;
+      if (py > H - 4) continue;
+      if (px > BX0 - 10 && px < BX1 + 10 && py < 800 && py > 560) continue;
+      const L = rnd(16, 30), pts = [];
+      for (let k = 0; k <= 6; k++) { const t = k / 6 * L; const wv = Math.sin(k / 6 * Math.PI * 2) * 1.4; pts.push(px + ca * t - sa * wv, py + sa * t + ca * wv); }
+      S(pts, .55, .32, 2, COL.ink, 0);
+    }
+  }
+  // 码头石岸
+  for (let x = 2240; x < 4340; x += 300) {
+    const x1 = Math.min(4340, x + 300); obj(x, 0);
+    S(fnPts(bot, x, x1, 10), 1.7, .8, 0);
+    S(fnPts(xx => bot(xx) + 13, x, x1, 12), 1.1, .65, 1);
+    for (let xx = x + 8; xx < x1; xx += 17) S([xx, bot(xx) + 1, xx + .5, bot(xx) + 12], .6, .5, 2, COL.ink, 0);
+    S(fnPts(xx => bot(xx) + 6.5, x, x1, 14), .5, .35, 2, COL.ink, 0);
+    F(fnPts(bot, x, x1, 20).concat(revPts(fnPts(xx => bot(xx) + 13, x, x1, 20))), COL.grey, .25, 3);
+  }
+  // 石阶下水
+  obj(2950, 0);
+  for (let k = 0; k < 5; k++) { const y = bot(2950) + 13 - k * 3.4; S([2944 - k * 1.5, y, 2984 + k * 1.5, y], .8, .7, 2); }
+  // 系船桩
+  for (const bx of [2620, 2880, 3170, 3440, 3720, 4060]) { obj(bx, 0); const y = bot(bx) + 22; S([bx, y, bx, y - 9], 3.2, .85, 1, COL.ink, 0); S([bx - 2.5, y - 9, bx + 2.5, y - 9], 1.4, .8, 2); }
+}
+
+function roadBand() {
+  const pieces = (x0, x1, f, w, a, st, gapMin, gapMax, lenMin, lenMax) => {
+    let x = x0 + rnd(0, 40);
+    while (x < x1) {
+      const L = rnd(lenMin, lenMax), xe = Math.min(x1, x + L);
+      obj(x, 0); S(fnPts(f, x, xe, 18).map((v, i) => i % 2 ? v + rnd(-.6, .6) : v), w, a, st);
+      x = xe + rnd(gapMin, gapMax);
+    }
+  };
+  const ranges = [[-200, 1060], [1104, BX0 - 60], [BX1 + 60, 6140], [6470, 9150]];
+  for (const r of ranges) {
+    pieces(r[0], r[1], x => roadY(x) - 24, 1.2, .6, 0, 20, 70, 120, 320);
+    pieces(r[0], r[1], x => roadY(x) + 42, 1.3, .65, 0, 20, 60, 140, 340);
+    pieces(r[0], r[1], x => roadY(x) - 7, .6, .22, 2, 40, 120, 60, 160);
+    pieces(r[0], r[1], x => roadY(x) + 18, .6, .22, 2, 40, 120, 60, 160);
+    for (let x = r[0]; x < r[1]; x += 160) {
+      const x1 = Math.min(r[1], x + 160); obj(x, 0);
+      F(fnPts(xx => roadY(xx) - 24, x, x1, 25).concat(revPts(fnPts(xx => roadY(xx) + 42, x, x1, 25))), COL.ochreL, .12, 3);
+    }
+    for (let x = r[0] + 30; x < r[1]; x += rnd(70, 160)) { if (rng() < .5) tuft(x, roadY(x) - 24 + rnd(-3, 1), rnd(.7, 1)); else tuft(x, roadY(x) + 44 + rnd(0, 4), rnd(.7, 1.1)); }
+    for (let x = r[0] + 60; x < r[1]; x += rnd(160, 380)) { obj(x, 0); const y = roadY(x) + rnd(-4, 30); S([x, y, x + rnd(2, 4), y - rnd(.5, 1.5)], 1.6, .4, 2); }
+  }
+}
+
+function fields() {
+  const rowsY = [512, 568, 628, 694];
+  for (let r = 0; r < rowsY.length - 1; r++) {
+    const ya = rowsY[r], yb = rowsY[r + 1], hgt = yb - ya, shift = hgt / -DY * DX;
+    let x = 120 + r * 40;
+    while (x < 1300) {
+      const w = rnd(130, 220), x1 = Math.min(1320, x + w);
+      if (!(x1 > 470 && x < 800 && r >= 1) && !(x1 > 1170 && x < 1430 && r >= 1)) {
+        obj(x, 0);
+        S(seg(x, yb, x1, yb), .9, .5, 0); S(seg(x + shift, ya, x1 + shift, ya), .8, .45, 0);
+        S([x, yb, x + shift, ya], .8, .45, 0);
+        const green = rng() < .55;
+        F([x, yb, x1, yb, x1 + shift, ya, x + shift, ya], green ? COL.green : COL.ochreL, green ? .16 : .14, 3);
+        if (green) for (let k = 1; k < 5; k++) { const t = k / 5; const y = lerp(yb, ya, t), xo = shift * t; for (let xx = x + xo + 6; xx < x1 + xo - 4; xx += rnd(7, 12)) S([xx, y, xx + .6, y - 3], .6, .4, 2, COL.greenD, 0); }
+        else for (let k = 1; k < 5; k++) { const t = k / 5; S(seg(x + shift * t + 4, lerp(yb, ya, t), x1 + shift * t - 4, lerp(yb, ya, t)), .45, .25, 2); }
+      }
+      x = x1;
+    }
+  }
+  // 近景田块
+  for (let x = 160; x < 1500; x += rnd(160, 240)) {
+    const w = rnd(120, 190); if (x > 960 && x < 1130) continue;
+    const ya = 880, yb = 960, shift = 80 / -DY * DX;
+    obj(x, 0);
+    S(seg(x, yb, x + w, yb), .9, .45, 0); S(seg(x + shift, ya, x + w + shift, ya), .8, .4, 0); S([x, yb, x + shift, ya], .8, .4, 0);
+    F([x, yb, x + w, yb, x + w + shift, ya, x + shift, ya], rng() < .5 ? COL.green : COL.ochreL, .13, 3);
+    for (let k = 1; k < 6; k++) { const t = k / 6; for (let xx = x + shift * t + 5; xx < x + w + shift * t - 4; xx += rnd(8, 13)) S([xx, lerp(yb, ya, t), xx + .5, lerp(yb, ya, t) - 3.5], .6, .35, 2, COL.greenD, 0); }
+  }
+}
+
+function stream() {
+  const cpts = cb(1250, 470, 1160, 600, 1110, 700, 1080, 752, 10).concat(cb(1080, 752, 1050, 820, 1000, 900, 960, 1010, 10).slice(2));
+  const left = [], right = [];
+  for (let i = 0; i < cpts.length; i += 2) { const y = cpts[i + 1], w = lerp(4, 13, (y - 470) / 540); left.push(cpts[i] - w, y); right.push(cpts[i] + w, y); }
+  const split = (a) => { const A = [], B = []; for (let i = 0; i < a.length; i += 2) { if (a[i + 1] < 732) A.push(a[i], a[i + 1]); else if (a[i + 1] > 788) B.push(a[i], a[i + 1]); } return [A, B]; };
+  for (const side of [left, right]) { const [A, B] = split(side); obj(1150, 0); S(A, 1.1, .65, 0); obj(1050, 0); S(B, 1.2, .7, 0); }
+  obj(1100, 0);
+  const [LA, LB] = split(left), [RA, RB] = split(right);
+  F(LA.concat(revPts(RA)), COL.cyanL, .25, 3); F(LB.concat(revPts(RB)), COL.cyanL, .25, 3);
+  for (let i = 0; i < 14; i++) { const t = rnd(0, 1), k = Math.floor(t * (cpts.length / 2 - 1)) * 2; const y = cpts[k + 1]; if (y > 730 && y < 790) continue; S([cpts[k] - 3, y, cpts[k] + 3, y + .5], .5, .35, 2); }
+  // 石板桥
+  obj(1080, 0);
+  const y0 = roadY(1080) - 14, y1 = roadY(1080) + 34;
+  F([1058, y0, 1104, y0, 1100, y1, 1062, y1], COL.paper, 1, 1, 0);
+  S([1058, y0, 1104, y0], 1.2, .8, 1); S([1062, y1, 1100, y1], 1.2, .8, 1);
+  S([1058, y0, 1062, y1], 1, .7, 1); S([1104, y0, 1100, y1], 1, .7, 1);
+  S([1062, y1, 1062, y1 + 7, 1100, y1 + 7, 1100, y1], .9, .7, 1);
+  for (let yy = y0 + 12; yy < y1; yy += 12) S([1060, yy, 1102, yy], .5, .4, 2);
+  F([1058, y0, 1104, y0, 1100, y1, 1062, y1], COL.grey, .22, 3);
+}
+
+function bridge() {
+  const Wd = 46, wdx = DX * Wd, wdy = DY * Wd;
+  const mid = (BX0 + BX1) / 2;
+  const footY = 774, A0 = BX0 + 22, A1 = BX1 - 22;
+  const arcY = (x, k) => { const u = clamp((x - A0) / (A1 - A0), 0, 1); const ap = 724 - BAPEX + 14 + k * 5.5; return footY - (footY - ap) * Math.pow(Math.sin(Math.PI * u), .82); };
+  // —— 中层：桥身
+  obj(BX0, 1);
+  // 远侧拱（透视）
+  for (let k = 0; k < 5; k += 2) S(fnPts(x => arcY(x - wdx, k) + wdy, A0 + wdx, A1 + wdx, 12), 1, .3, 1);
+  // 遮挡：桥面与拱带
+  const deckN = fnPts(deckY, BX0, BX1, 10), deckF = fnPts(x => deckY(x - wdx) + wdy, BX0 + wdx, BX1 + wdx, 10);
+  F(deckN.concat(revPts(deckF)), COL.paper, 1, 1, 0);
+  F(fnPts(deckY, BX0, BX1, 10).concat(revPts(fnPts(x => deckY(x) + 11, BX0, BX1, 10))), COL.paper, 1, 1, 0);
+  const archTop = fnPts(x => arcY(x, 0), A0, A1, 10), archBot = fnPts(x => arcY(x, 4) + 4, A0, A1, 10);
+  F(archTop.concat(revPts(archBot)), COL.paper, 1, 1, 0);
+  // 撑木（桥面与拱之间）
+  for (let x = A0 + 14; x < A1 - 10; x += 30) { const y0 = deckY(x) + 10, y1 = arcY(x, 0); if (y1 - y0 > 6) S([x, y0, x, y1], .9, .65, 1, COL.ink, 0); }
+  // 桥面
+  S(deckF, 1.1, .55, 1);
+  S(fnPts(deckY, BX0 - 4, BX1 + 4, 8), 2.2, .9, 1);
+  S(fnPts(x => deckY(x) + 11, BX0 + 4, BX1 - 4, 8), 1.4, .8, 1);
+  // 拱木：分段错缝
+  for (let k = 0; k < 5; k++) {
+    const joints = [A0]; let jx = A0 + 40 + k * 22;
+    while (jx < A1 - 30) { joints.push(jx); jx += 92 + rnd(-8, 8); }
+    joints.push(A1);
+    for (let j = 0; j < joints.length - 1; j++) S(fnPts(x => arcY(x, k), joints[j] + 1.5, joints[j + 1] - 1.5, 8), 1.6, .85, 1);
+  }
+  for (let x = A0 + 30; x < A1 - 20; x += 46) {
+    const y0 = arcY(x, 0) - 1, y1 = arcY(x, 4) + 3;
+    S([x, y0, x + 1, y1], 1.1, .75, 2, COL.ink, 0);
+    S(ell(x + .5, (y0 + y1) / 2, 2.4, 2.4, 8), .7, .7, 2);
+  }
+  F(archTop.concat(revPts(archBot)), COL.wood, .32, 3);
+  F(fnPts(deckY, BX0, BX1, 10).concat(revPts(fnPts(x => deckY(x) + 11, BX0, BX1, 10))), COL.wood, .38, 3);
+  F(deckN.concat(revPts(deckF)), COL.ochreL, .26, 3);
+  // 远侧栏杆
+  S(fnPts(x => deckY(x - wdx) + wdy - 12, BX0 + wdx + 4, BX1 + wdx - 4, 10), .9, .45, 2);
+  for (let x = BX0 + wdx + 8; x < BX1 + wdx - 4; x += 13) S([x, deckY(x - wdx) + wdy, x, deckY(x - wdx) + wdy - 12], .6, .35, 2, COL.ink, 0);
+  // 桥台（石砌）
+  for (const side of [-1, 1]) {
+    const bx = side < 0 ? BX0 : BX1, x0 = side < 0 ? bx - 52 : bx - 30, x1 = side < 0 ? bx + 30 : bx + 52;
+    obj(bx, 1);
+    const p = [x0, 724, x1, 724, x1 + side * 6, 790, x0 - side * 0 - 6 * (side < 0 ? 1 : -1), 790];
+    F(p, COL.paper, 1, 1, 0);
+    S(p.concat(p.slice(0, 2)), 1.3, .8, 1);
+    for (let y = 736; y < 790; y += 11) S([x0 + 2, y, x1 - 2, y], .5, .45, 2);
+    for (let y = 730, r = 0; y < 790; y += 11, r++) for (let xx = x0 + 6 + (r % 2) * 9; xx < x1 - 4; xx += 18) S([xx, y, xx, y + 10], .45, .4, 2, COL.ink, 0);
+    F(p, COL.grey, .3, 3);
+  }
+  // —— 前层：近侧栏杆、华表
+  obj(BX0 + 30, 2);
+  S(fnPts(x => deckY(x) - 13, BX0 + 2, BX1 - 2, 8), 1.5, .88, 1);
+  S(fnPts(x => deckY(x) - 3, BX0 + 2, BX1 - 2, 8), 1, .75, 1);
+  for (let x = BX0 + 8; x < BX1 - 4; x += 13) S([x, deckY(x) - 1, x, deckY(x) - 13], .75, .7, 2, COL.ink, 0);
+  for (let x = BX0 + 4; x <= BX1; x += 60) { S([x, deckY(x) + 1, x, deckY(x) - 17], 2.2, .9, 1, COL.ink, 0); S(ell(x, deckY(x) - 18, 2.2, 1.6, 8), .8, .8, 2); }
+  for (const hx of [BX0 - 40, BX1 + 40]) {
+    const yb = 726;
+    S([hx, yb, hx, yb - 130], 2.2, .9, 1, COL.ink, 0);
+    S([hx - 9, yb - 112, hx + 9, yb - 116], 1.4, .85, 1);
+    S(qd(hx - 3, yb - 130, hx, yb - 138, hx + 6, yb - 134, 4), 1.6, .85, 2);
+    S([hx + 6, yb - 134, hx + 10, yb - 131], 1, .8, 2);
+    S([hx - 6, yb, hx + 6, yb, hx + 5, yb - 6, hx - 5, yb - 6, hx - 6, yb], 1, .8, 1);
+  }
+}
+
+function gate() {
+  const x0 = 6150, x1 = 6460, yb = 764, top = 590, bt = 20, d = 150, dx = DX * d, dy = DY * d;
+  // 侧面与城门洞（后层，送货人从洞口走出）
+  obj(x0, 0);
+  const side = [x1, yb, x1 + dx, yb + dy, x1 - bt + dx, top + dy, x1 - bt, top];
+  F(side, COL.paper, 1, 1, 0);
+  S(side.concat(side.slice(0, 2)), 1.3, .8, 1);
+  for (let k = 1; k < 9; k++) { const t = k / 9; S([x1 - bt * t, lerp(yb, top, t), x1 - bt * t + dx, lerp(yb, top, t) + dy], .45, .4, 2); }
+  const oa = .3, ob = .85;
+  const bl = [x1 + dx * oa - 4, yb + dy * oa], br = [x1 + dx * ob - 4, yb + dy * ob];
+  const arch = [bl[0], bl[1]].concat(qd(bl[0], bl[1] - 52, (bl[0] + br[0]) / 2, (bl[1] + br[1]) / 2 - 88, br[0], br[1] - 52, 10)).concat([br[0], br[1]]);
+  F(arch, COL.ink, .62, 2, 0);
+  S(arch, 1.3, .85, 2);
+  F(side, COL.ochre, .3, 3);
+  // 城墙向远处延伸
+  obj(x1 + dx, 0);
+  const wl = [x1 + dx - 10, top + dy + 6];
+  for (let k = 0; k < 2; k++) {
+    const sx = k ? x0 + 22 : x1 + dx - 8, sy = k ? top + 12 : top + dy + 10;
+    const ex = k ? x0 - 330 : sx + 250, ey = k ? top - 60 : sy - 190;
+    const N = 6;
+    for (let j = 0; j < N; j++) {
+      const t0 = j / N, t1 = (j + 1) / N, fa = 1 - j / N * .75;
+      const ax = lerp(sx, ex, t0), ay = lerp(sy, ey, t0), bx = lerp(sx, ex, t1), by = lerp(sy, ey, t1);
+      const hA = lerp(30, 12, t0), hB = lerp(30, 12, t1);
+      const poly = [ax, ay, bx, by, bx, by + hB, ax, ay + hA];
+      obj(ax, 0);
+      F(poly, COL.paper, 1, 1, 0);
+      S([ax, ay, bx, by], 1.1, .75 * fa, 1); S([ax, ay + hA, bx, by + hB], .8, .5 * fa, 1);
+      for (let t = 0; t < 1; t += .2) { const px = lerp(ax, bx, t), py = lerp(ay, by, t), hh = lerp(hA, hB, t); S([px, py, px, py - hh * .22], 1.6 * fa + .4, .6 * fa, 2, COL.ink, 0); S([px + 2, py + hh * .4, px + 2, py + hh * .7], .4, .35 * fa, 2, COL.ink, 0); }
+      F(poly, COL.ochre, .3 * fa, 3);
+      F([ax, ay, bx, by, bx, by + hB * .25, ax, ay + hA * .25], COL.ink, .08 * fa, 3);
+    }
+  }
+  void wl;
+  // 城楼
+  house(x0 + 24, top, 262, 64, 120, { roof: 'hip', ov: 26, rh: 62, front: ['lattice', 'door', 'door', 'lattice', 'lattice'], bays: 5, base: true, gx: x0 + 150 });
+  obj(x0 + 150, 0);
+  S(seg(x0 + 20, top - 14, x0 + 290, top - 14), 1, .75, 2);
+  for (let x = x0 + 22; x < x0 + 290; x += 7) S([x, top - 14, x, top - 3], .5, .55, 2, COL.ink, 0);
+  // 前层：城台正面
+  obj(x0 + 150, 2);
+  const front = [x0, yb, x1, yb, x1 - bt, top, x0 + bt, top];
+  F(front, COL.paper, 1, 1, 0);
+  S(front.concat(front.slice(0, 2)), 1.6, .9, 1);
+  for (let y = top + 13, r = 0; y < yb; y += 13, r++) {
+    const t = (y - top) / (yb - top), xa = lerp(x0 + bt, x0, t), xb = lerp(x1 - bt, x1, t);
+    S([xa + 1, y, xb - 1, y], .5, .45, 2);
+    for (let xx = xa + 8 + (r % 2) * 13; xx < xb - 4; xx += 26) S([xx, y - 13, xx, y], .4, .35, 2, COL.ink, 0);
+  }
+  S([x0 + bt - 4, top, x1 - bt + 4, top], 2, .9, 1);
+  F(front, COL.ochre, .26, 3);
+  F([x0, yb, x1, yb, x1 - 4, yb - 28, x0 + 4, yb - 28], COL.ink, .07, 3);
+}
+
+function colophon() {
+  obj(8880, 0);
+  TX('受张择端清明上河图启发的数字创作', 8968, 250, 13, COL.ink, font.serif, 2, .82);
+  TX('人物故事为艺术虚构', 8946, 250, 13, COL.ink, font.serif, 2, .82);
+  TX('一卷展开满城烟火', 8908, 260, 24, COL.ink, font.brush, 2, .88);
+  const sx = 8896, sy = 500;
+  F([sx, sy, sx + 26, sy, sx + 26, sy + 26, sx, sy + 26], COL.red, .82, 2, 0);
+  TX('一日', sx + 13, sy + 7.5, 10.5, COL.white, font.brush, 2, .95);
+  TX('Designed by Toby', 8920, 556, 11, COL.ink, font.serif, 2, .8, false);
+  // 引首
+  obj(30, 0);
+  TX('汴京一日', 82, 236, 46, COL.ink, font.brush, 1, .86);
+  TX('会生长的清明上河图', 34, 250, 13, COL.ink, font.serif, 2, .62);
+  F([66, 470, 96, 470, 96, 500, 66, 500], COL.red, .78, 2, 0);
+  TX('汴京', 81, 478, 11, COL.white, font.brush, 2, .95);
+}
+
+function buildScene() {
+  rng = mulberry32(11270);
+  // —— 远山与天际
+  hills(-60, 820, 470, 95, .9); hills(560, 1420, 452, 62, .7); hills(8180, 9050, 486, 86, .85); hills(7900, 8500, 470, 50, .6);
+  for (let x = 90; x < 1380; x += rnd(26, 58)) distTree(x, 488 + rnd(-10, 8), rnd(26, 44), .5);
+  for (let x = 1450; x < 2300; x += rnd(40, 80)) { const t = rivC(x) - rivW(x); distTree(x, t - 6 - rnd(0, 30), rnd(24, 40), .45); }
+  fields();
+  stream();
+  roadBand();
+  riverBand();
+
+  // —— 第一段：城郊
+  willow(470, 664, 170); tree(610, 600, 170, { kind: 'tick' });
+  house(520, 650, 104, 46, 60, { roof: 'thatch', front: ['door', 'wall'], bays: 2 });
+  house(660, 628, 84, 40, 52, { roof: 'thatch', front: ['wall', 'door'], bays: 2 });
+  fence(480, 662, 720, 664);
+  obj(780, 0); { const hx = 780, hy = 648; const p = [hx - 16, hy, hx - 10, hy - 22, hx, hy - 30, hx + 10, hy - 22, hx + 16, hy]; S(p, 1.1, .75, 1); for (let i = 0; i < 7; i++) S([hx - 12 + i * 4, hy - 2, hx - 8 + i * 3, hy - 20], .5, .4, 2); F(p, COL.ochreL, .45, 3); }
+  willow(190, 736, 205); tree(330, 724, 190, { kind: 'dot' }); willow(880, 736, 190);
+  house(1200, 672, 132, 58, 72, { roof: 'hip', front: ['door', 'lattice', 'lattice'], bays: 3, base: true });
+  house(1354, 664, 70, 38, 46, { roof: 'thatch', front: 'wall', bays: 1 });
+  fence(1180, 686, 1440, 682); tree(1170, 640, 180, { kind: 'dot' });
+  willow(1470, 744, 200); tree(1640, 742, 210, { kind: 'tick' }); willow(1800, 734, 170);
+  for (let x = 40; x < 1600; x += rnd(40, 90)) tuft(x, rnd(800, 1000), rnd(.8, 1.2));
+  rock(260, 812, 1); rock(1320, 820, 1.2); rock(1700, 830, .9);
+  willow(1010, 985, 330, { lay: 2, lean: -.08 });
+  willow(110, 990, 260, { lay: 2, lean: .1 });
+
+  // —— 第二段：汴河码头
+  const top = x => rivC(x) - rivW(x);
+  for (let x = 2120; x < 3980; x += rnd(40, 90)) distTree(x, top(x) - 70 - rnd(0, 40), rnd(30, 46), .4);
+  for (let x = 2300; x < 3950; x += rnd(120, 200)) house(x, top(x) - 78, rnd(60, 90), 20, 34, { roof: 'hip', a: .4, front: 'wall', bays: 2 });
+  for (let x = 2280, i = 0; x < 3960; i++) {
+    const w = rnd(90, 150);
+    if (i % 3 === 2) { willow(x + w * .5, top(x + w * .5) - 2, rnd(110, 150), { a: .8 }); x += w * .7; continue; }
+    house(x, top(x) - 5, w, rnd(36, 48), 48, { roof: rng() < .5 ? 'hip' : 'gable', front: ['open', 'lattice', 'door', 'lattice'].slice(0, Math.round(w / 42)), bays: Math.round(w / 42), a: .82 });
+    x += w + rnd(20, 50);
+  }
+  willow(2140, 706, 180); willow(2470, 704, 150); tree(3880, 700, 200, { kind: 'dot' });
+  sacks(3030, 694, 9); sacks(3300, 700, 7); sacks(3620, 702, 5);
+  house(3740, 706, 150, 52, 56, { front: ['open', 'open', 'open'], bays: 3, roof: 'gable' });
+  parasol(2250, 812, 72, 34); table(2250, 812, 40, { goods: COL.ochre }); bench(2214, 820, 22);
+  house(2380, 990, 220, 70, 80, { front: ['shop', 'open', 'shop', 'lattice'], bays: 4, curtain: COL.cyan });
+  house(2680, 994, 160, 60, 70, { front: 'lattice' });
+  house(2960, 990, 210, 70, 80, { front: ['open', 'shop', 'door', 'lattice'], bays: 4 });
+  house(3300, 994, 150, 60, 70, { front: 'lattice', roof: 'gable' });
+  house(3560, 990, 190, 66, 80, { front: ['door', 'lattice', 'lattice', 'open'], bays: 4 });
+  house(3880, 994, 160, 60, 70, { front: 'lattice' });
+  tree(2600, 900, 170, { kind: 'tick' }); willow(3200, 905, 160); tree(3470, 880, 150, { kind: 'dot' });
+
+  // —— 第三段：虹桥
+  parasol(4176, 806, 76, 38); table(4180, 806, 44, { goods: COL.white }); bench(4140, 812, 24); bench(4222, 812, 24);
+  willow(4250, 808, 150);
+  house(3990, 990, 180, 64, 76, { front: ['shop', 'open', 'lattice'], bays: 3, curtain: COL.white });
+  willow(4470, 994, 180, { lay: 2 });
+  bridge();
+  // 桥上伞棚
+  parasol(4560, deckY(4560) - 14, 62, 30, { lay: 1 }); parasol(4810, deckY(4810) - 14, 62, 30, { lay: 1 });
+  house(5060, 700, 160, 62, 80, { front: ['open', 'shop', 'lattice'], bays: 3, sign: '酒', signBay: 0, curtain: COL.white, base: true });
+  parasol(5250, 768, 70, 34); table(5250, 768, 40, { goods: COL.ochreL });
+  house(5260, 702, 140, 56, 70, { front: ['lattice', 'door', 'lattice'], bays: 3 });
+  tree(5450, 698, 230, { kind: 'dot' });
+  house(5520, 704, 170, 60, 80, { front: ['door', 'lattice', 'open', 'lattice'], bays: 4 });
+  willow(5760, 708, 170);
+  house(5850, 708, 150, 56, 70, { front: ['lattice', 'open', 'lattice'], bays: 3 });
+  willow(5090, 806, 170, { lay: 2 });
+  for (let x = 5700; x < 6150; x += 200) house(x, 994, 170, 60, 70, { front: 'lattice' });
+  tree(5980, 880, 170, { kind: 'tick' });
+  for (let x = 5000; x < 6100; x += 70) house(x, 640 - rnd(0, 20), rnd(80, 120), 26, 40, { roof: 'hip', a: .45, front: 'wall', bays: 2 });
+
+  // —— 第四段：城门与街市
+  willow(6040, 708, 160);
+  gate();
+  for (let x = 5300; x < 8300; x += rnd(40, 80)) distTree(x, 560 - rnd(0, 50), rnd(30, 50), .38);
+  for (let x = 6450; x < 8250; x += rnd(90, 150)) house(x, 588 - rnd(0, 26), rnd(70, 110), 22, 36, { roof: 'hip', a: .36, front: 'wall', bays: 2 });
+  for (let x = 6500; x < 8200; x += rnd(160, 260)) tree(x, 610, rnd(150, 200), { kind: rng() < .5 ? 'dot' : 'tick', a: .55 });
+  const backRow = [[6480, 120], [6630, 140], [6800, 120], [6960, 150], [7140, 130], [7300, 150], [7480, 140], [7650, 150], [7840, 130], [8000, 150], [8160, 140]];
+  for (const b of backRow) house(b[0], 642 - rnd(0, 14), b[1], 34, 50, { roof: 'hip', a: .5, front: 'wall', bays: 2 });
+  house(6500, 708, 116, 56, 70, { front: ['door', 'lattice'], bays: 2 });
+  house(6640, 708, 150, 60, 80, { front: ['open', 'shop', 'open'], bays: 3, sign: '茶', signBay: 0, curtain: COL.cyan, base: true });
+  house(6812, 708, 160, 62, 80, { front: ['shop', 'jars', 'open'], bays: 3, sign: '饼', signBay: 0, curtain: COL.white, base: true });
+  house(6996, 708, 118, 56, 70, { front: ['lattice', 'door'], bays: 2 });
+  house(7140, 708, 130, 58, 74, { front: ['open', 'shop'], bays: 2, curtain: COL.cyan });
+  house(7300, 708, 92, 52, 66, { front: ['door', 'lattice'], bays: 2 });
+  house(7410, 708, 170, 62, 82, { front: ['cloth', 'cloth', 'door'], bays: 3, sign: '布', signBay: 0, curtain: COL.white, base: true });
+  tower2(7610, 708, 270, 62, 52, 100, { front: ['open', 'shop', 'open', 'shop', 'open'], bays: 5, curtain: COL.cyan, base: true, gx: 7745 });
+  huanmen(7690, 710, 110, 108);
+  house(7910, 708, 130, 56, 72, { front: ['lattice', 'open'], bays: 2 });
+  house(8060, 708, 120, 54, 70, { front: ['door', 'lattice'], bays: 2 });
+  tree(6590, 640, 220, { kind: 'dot' });
+  parasol(6730, 816, 70, 34); table(6730, 816, 40, { goods: COL.ochre });
+  parasol(7340, 816, 70, 34); table(7340, 816, 40, { goods: COL.green });
+  parasol(7940, 816, 70, 34); table(7940, 816, 40, { goods: COL.white });
+  for (const x of [6500, 6730, 6990, 7260, 7530, 7800, 8070]) house(x, 996, 200, 60, 70, { front: rng() < .5 ? 'lattice' : ['open', 'lattice', 'door', 'lattice'], bays: 4 });
+  table(6700, 748, 34); bench(6672, 754, 22); bench(6730, 754, 22);
+
+  // —— 第五段：茶肆与收卷
+  house(8330, 708, 252, 66, 90, { front: ['open', 'shop', 'open', 'jars', 'door'], bays: 5, curtain: COL.cyan, sign: '茶', signBay: 0, base: true });
+  obj(8460, 0);
+  { const aw = [8344, 646, 8572, 646, 8590, 690, 8326, 690]; F(aw, COL.paper, 1, 1, 0); S(aw.concat(aw.slice(0, 2)), 1, .8, 1); for (let x = 8350; x < 8580; x += 12) S([x, 647, x - 6 + (x - 8344) * .06, 689], .45, .45, 2); F(aw, COL.white, .2, 3); F(aw, COL.ochreL, .2, 3);
+    S([8330, 690, 8330, 748], 1.2, .85, 1, COL.ink, 0); S([8586, 690, 8586, 748], 1.2, .85, 1, COL.ink, 0); }
+  table(8462, 750, 34); bench(8420, 754, 26); bench(8506, 754, 26);
+  willow(8240, 712, 190); tree(8670, 700, 200, { kind: 'tick' });
+  house(8700, 716, 104, 46, 60, { roof: 'thatch', front: ['door', 'wall'], bays: 2 });
+  willow(8820, 724, 200);
+  for (const x of [8380, 8640]) house(x, 998, 200, 58, 70, { front: 'lattice' });
+  for (let x = 8600; x < 9000; x += rnd(30, 60)) distTree(x, 500 + rnd(-8, 8), rnd(26, 40), .45);
+  for (let x = 8300; x < 8980; x += rnd(40, 80)) tuft(x, rnd(820, 1000), 1);
+  willow(8900, 990, 280, { lay: 2, lean: -.12 });
+  colophon();
+}
+
+/* ============ 人物、牲畜、车船（每帧绘制） ============ */
+const INK = COL.ink;
+const ds = y => clamp(.5 + .5 * (y - 300) / 430, .45, 1.12) * 1.16;
+function rot(x, y, a) { const c = Math.cos(a), s = Math.sin(a); return [x * c - y * s, x * s + y * c]; }
+function ik(sx, sy, tx, ty, l1, l2, bendDir) {
+  let dx = tx - sx, dy = ty - sy; let d = Math.hypot(dx, dy);
+  const md = l1 + l2 - .01; if (d > md) { dx *= md / d; dy *= md / d; d = md; }
+  const a = Math.atan2(dy, dx), cosA = clamp((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d || 1), -1, 1);
+  const b = a + bendDir * Math.acos(cosA);
+  return [sx + Math.cos(b) * l1, sy + Math.sin(b) * l1, sx + dx, sy + dy];
+}
+function limb(c, pts, col, w) {
+  c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]);
+  c.strokeStyle = INK; c.lineWidth = w + 1.15; c.stroke();
+  c.strokeStyle = col; c.lineWidth = w; c.stroke();
+}
+function shape(c, pts, fill, lw) {
+  c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]); c.closePath();
+  if (fill) { c.fillStyle = fill; c.fill(); }
+  if (lw) { c.strokeStyle = INK; c.lineWidth = lw; c.stroke(); }
+}
+function eShape(c, x, y, rx, ry, a, fill, lw) {
+  c.beginPath(); c.ellipse(x, y, Math.max(.1, rx), Math.max(.1, ry), a || 0, 0, Math.PI * 2);
+  if (fill) { c.fillStyle = fill; c.fill(); } if (lw) { c.strokeStyle = INK; c.lineWidth = lw; c.stroke(); }
+}
+function line(c, x0, y0, x1, y1, w, col, a) {
+  c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.strokeStyle = col || INK; c.lineWidth = w; if (a != null) { const o = c.globalAlpha; c.globalAlpha = o * a; c.stroke(); c.globalAlpha = o; } else c.stroke();
+}
+
+// 服色：低饱和、宋画调
+const ROBES = ['#e9e0cb', '#c9bfa6', '#a9bcb7', '#c79f74', '#9c958a', '#d8cdb3', '#8fa19a', '#b9a58a', '#ddd3be'];
+const PANTS = ['#5a5249', '#6d655a', '#8a8174', '#e3dac6', '#4f4a44'];
+function makeStyle(r, o) {
+  o = o || {};
+  return Object.assign({
+    robe: ROBES[Math.floor(r() * ROBES.length)], pants: PANTS[Math.floor(r() * PANTS.length)],
+    hat: ['futou', 'bun', 'scarf', 'straw', 'bun', 'futou'][Math.floor(r() * 6)], long: r() < .35, skin: COL.skin
+  }, o);
+}
+
+/* 人物：脚底在 (x,y)，s 为比例；po 为姿态 */
+function person(c, x, y, s, st, po) {
+  po = po || {};
+  const f = po.f || 1, lean = po.lean || 0, ph = po.ph || 0, amp = po.amp != null ? po.amp : (po.walk ? 1 : 0);
+  c.save(); c.translate(x, y); c.scale(s * f, s); c.lineCap = 'round'; c.lineJoin = 'round';
+  const toL = (wx, wy) => [(wx - x) / (s * f), (wy - y) / s];
+  const hip = po.sit ? [-1, -10.5] : [0, -17 + (po.crouch || 0)];
+  const R = (px, py) => { const r = rot(px, py, lean); return [hip[0] + r[0], hip[1] + r[1]]; };
+  const sh = R(.4, -12.2);
+  const handTarget = (t) => t ? toL(t[0], t[1]) : null;
+  const armPts = (side, ang, tgt) => {
+    const sx = sh[0] - side * .6, sy = sh[1] + .4;
+    if (tgt) { const e = ik(sx, sy, tgt[0], tgt[1], 7, 7, 1); return [sx, sy, e[0], e[1], e[2], e[3]]; }
+    const a = ang; const ex = sx + Math.sin(a) * 6.8, ey = sy + Math.cos(a) * 6.8;
+    const a2 = a + (po.elbow != null ? po.elbow : .35);
+    return [sx, sy, ex, ey, ex + Math.sin(a2) * 6.8, ey + Math.cos(a2) * 6.8];
+  };
+  const sw = Math.sin(ph) * .5 * amp;
+  const aB = po.aB != null ? po.aB : -sw * .9 + .05, aF = po.aF != null ? po.aF : sw * .9 + .05;
+  const tB = handTarget(po.hB), tF = handTarget(po.hF);
+  // 后臂
+  const armB = armPts(-1, aB, tB);
+  limb(c, armB, shadeCol(st.robe), 2.3);
+  // 腿
+  const legCol = st.pants;
+  if (po.sit) {
+    for (const k of [-1, 1]) { const kx = hip[0] + 8 + k * .8, ky = hip[1] + .5; limb(c, [hip[0] + k * .8, hip[1], kx, ky, kx + 1 + k * .5, 0], k < 0 ? shadeCol(legCol) : legCol, 2.5); }
+  } else {
+    for (const k of [-1, 1]) {
+      const a = Math.sin(ph) * .42 * amp * k + (po.stance || 0) * k;
+      const lift = Math.max(0, k * Math.cos(ph)) * 2.2 * amp;
+      const fx = hip[0] + Math.sin(a) * 17, fy = hip[1] + Math.cos(a) * 17 - lift;
+      const kx = (hip[0] + fx) / 2 + 1.2 + lift * .4, ky = (hip[1] + fy) / 2;
+      limb(c, [hip[0], hip[1], kx, ky, fx, fy], k < 0 ? shadeCol(legCol) : legCol, 2.6);
+      line(c, fx - .5, fy, fx + 2.4, fy, 1.6);
+    }
+  }
+  // 身体
+  const hem = st.long ? (po.sit ? 9 : 14.5) : 3;
+  const flare = st.long ? 6.4 : 5.4;
+  const body = [R(-3.5, -12.5), R(3.7, -12.5), R(flare - (po.sit ? 1 : 0), hem), R(-flare, hem)].flat();
+  if (po.sit && st.long) { body[4] = hip[0] + 9; body[5] = hip[1] + 2; }
+  shape(c, body, st.robe, .9);
+  const b0 = R(-4.6, 1.5), b1 = R(4.8, 1.5); line(c, b0[0], b0[1], b1[0], b1[1], .9, INK, .75);
+  const col0 = R(0, -12.5), col1 = R(2.6, -7); line(c, col0[0], col0[1], col1[0], col1[1], .6, INK, .6);
+  // 担子、麻袋（在肩上）
+  if (po.pole) {
+    const p0 = R(-17, -13.5), p1 = R(18, -12.5);
+    line(c, p0[0], p0[1], p1[0], p1[1], 1.4, '#6b5440');
+    const swing = Math.sin(ph) * 1.4 * amp;
+    for (const p of [p0, p1]) {
+      const bx = p[0] + swing, by = p[1] + 13;
+      line(c, p[0], p[1], bx - 4, by - 5, .5); line(c, p[0], p[1], bx + 4, by - 5, .5);
+      shape(c, [bx - 5, by - 5, bx + 5, by - 5, bx + 4, by + 2, bx - 4, by + 2], po.poleCol || '#c6a273', .7);
+      if (po.poleGoods) eShape(c, bx, by - 6, 4, 2, 0, po.poleGoods, .5);
+    }
+  }
+  if (po.sack === 'shoulder') { const p = R(-1.5, -15); eShape(c, p[0], p[1], 6.5, 3.6, -.2, COL.ochreL, .8); line(c, p[0] + 3, p[1] - 2, p[0] + 5, p[1] + 1, .5); }
+  // 头
+  const hd = R(.9, -18.8);
+  if (st.hat === 'bun') { eShape(c, hd[0] - 1.6, hd[1] - 3.2, 1.6, 1.5, 0, '#2f2a25', .4); }
+  eShape(c, hd[0], hd[1], 3.25, 3.45, 0, st.skin, .8);
+  c.beginPath(); c.arc(hd[0], hd[1], 3.3, Math.PI * .95, Math.PI * 1.85); c.strokeStyle = '#2f2a25'; c.lineWidth = 1.6; c.stroke();
+  line(c, hd[0] + 3, hd[1] + .2, hd[0] + 3.7, hd[1] + .9, .6);
+  if (st.hat === 'futou') { shape(c, [hd[0] - 3.4, hd[1] - 1.2, hd[0] - 3, hd[1] - 4.6, hd[0] + 1.8, hd[1] - 4.9, hd[0] + 3.3, hd[1] - 1.5], '#2c2723', .5); line(c, hd[0] - 3.2, hd[1] - 2.5, hd[0] - 6.5, hd[1] - 1.5, .9); }
+  else if (st.hat === 'scarf') { shape(c, [hd[0] - 3.5, hd[1] - .8, hd[0] - 3, hd[1] - 4.4, hd[0] + 2, hd[1] - 4.6, hd[0] + 3.4, hd[1] - 1.6], st.scarf || '#ebe4d2', .6); line(c, hd[0] - 3.2, hd[1] - 1.2, hd[0] - 5.4, hd[1] + 2.2, .9, st.scarf || '#d8d0bd'); }
+  else if (st.hat === 'straw') { shape(c, [hd[0] - 8.5, hd[1] - 1.6, hd[0] + .4, hd[1] - 7.4, hd[0] + 8.5, hd[1] - 1.6], '#cfb183', .7); }
+  else if (st.hat === 'cap') { eShape(c, hd[0] - .3, hd[1] - 3, 3.6, 2.2, 0, st.capCol || '#3a3530', .5); }
+  // 前臂
+  const armF = armPts(1, aF, tF);
+  limb(c, armF, st.robe, 2.3);
+  eShape(c, armF[4], armF[5], .9, .9, 0, st.skin, .4);
+  c.restore();
+  return { hand: [x + armF[4] * s * f, y + armF[5] * s], handB: [x + armB[4] * s * f, y + armB[5] * s], head: [x + hd[0] * s * f, y + hd[1] * s] };
+}
+const shadeCache = {};
+function shadeCol(h) {
+  if (shadeCache[h]) return shadeCache[h];
+  const n = parseInt(h.slice(1), 16); const r = (n >> 16) * .82 | 0, g = ((n >> 8) & 255) * .82 | 0, b = (n & 255) * .82 | 0;
+  return shadeCache[h] = '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+
+/* 四足：驴、马、牛 */
+function beast(c, x, y, s, f, ph, kind, o) {
+  o = o || {};
+  const K = kind === 'ox' ? { rx: 15, ry: 7.5, leg: 9, col: '#7a6450', neck: 4 } : kind === 'horse' ? { rx: 13.5, ry: 6, leg: 13, col: o.col || '#b8a07f', neck: 9 } : { rx: 10.5, ry: 5.3, leg: 10, col: o.col || '#8d8376', neck: 6 };
+  c.save(); c.translate(x, y); c.scale(s * f, s); c.lineCap = 'round'; c.lineJoin = 'round';
+  const cy = -(K.leg + K.ry * .7), amp = o.amp != null ? o.amp : 1;
+  const legs = [[K.rx * .62, 0], [-K.rx * .62, Math.PI], [K.rx * .52, Math.PI], [-K.rx * .7, 0]];
+  legs.forEach((l, i) => {
+    const sw = Math.sin(ph + l[1]) * 3.2 * amp, lift = Math.max(0, Math.cos(ph + l[1])) * 1.4 * amp;
+    const top = [l[0], cy + K.ry * .4];
+    limb(c, [top[0], top[1], top[0] + sw * .4 + (l[0] > 0 ? .8 : -.8), top[1] + K.leg * .55, top[0] + sw, -lift], i >= 2 ? shadeCol(K.col) : K.col, kind === 'ox' ? 2.6 : 1.9);
+  });
+  // 尾
+  line(c, -K.rx, cy - 1, -K.rx - 3, cy + 7 + Math.sin(ph * .5) * .8, 1);
+  eShape(c, 0, cy, K.rx, K.ry, 0, K.col, .9);
+  // 颈与头
+  const nx = K.rx * .75, ny = cy - K.ry * .35;
+  const hx = K.rx + K.neck * .7, hy = kind === 'ox' ? cy + 1 : cy - K.neck - 3;
+  shape(c, [nx - 3, ny - 2, hx - 1, hy - 2, hx + 1, hy + 2.5, nx + 1, ny + 4], K.col, .8);
+  eShape(c, hx + 2.8, hy + 1.2, kind === 'ox' ? 4.6 : 4.4, kind === 'ox' ? 3 : 2.3, kind === 'ox' ? .3 : .55, K.col, .8);
+  if (kind === 'ox') { c.beginPath(); c.moveTo(hx - .5, hy - 1.5); c.quadraticCurveTo(hx + 1, hy - 5, hx + 4, hy - 5); c.strokeStyle = '#e8dfcc'; c.lineWidth = 1.2; c.stroke(); }
+  else { line(c, hx, hy - 1.6, hx - 1.5, hy - 6.5, 1.2, K.col); line(c, hx + .8, hy - 1.6, hx + .5, hy - 6.8, 1.2, K.col); }
+  if (kind === 'horse') { line(c, nx - 2, ny - 2, hx - 1, hy - 2.5, 1.6, '#4a3c30'); }
+  if (o.load) { eShape(c, -2, cy - K.ry * .9, 6, 3.6, 0, o.load, .7); eShape(c, -1, cy + 1, 4, 4.4, 0, shadeCol(o.load), .6); line(c, -6, cy - 3, 4, cy - 3, .5); }
+  if (o.saddle) { shape(c, [-5, cy - K.ry + 1, 5, cy - K.ry + 1, 4, cy - K.ry + 4, -4, cy - K.ry + 4], o.saddle, .5); }
+  c.restore();
+  return { back: [x + (-1) * s * f, y + (cy - K.ry) * s] };
+}
+
+/* 独轮车：从送货人脚底起算 */
+function barrow(c, x, y, s, f, slope, wheelA, load) {
+  c.save(); c.translate(x, y); c.scale(s * f, s); c.rotate(slope * f); c.lineCap = 'round'; c.lineJoin = 'round';
+  const ax = 40, ay = -7.5, r = 7.5;
+  // 远侧车辕
+  line(c, 10.5, -18.5, ax - 1, ay - 2.5, 1.2, '#5e4836');
+  // 货
+  if (load === 'full' || load === 'crate') {
+    shape(c, [19, -21, 35, -21, 35, -11, 19, -11], '#c09466', .9);
+    line(c, 19, -16, 35, -16, .5); line(c, 27, -21, 27, -11, .5);
+    shape(c, [35, -21, 37.5, -23, 37.5, -13, 35, -11], '#9e7651', .7);
+    shape(c, [19, -21, 21.5, -23, 37.5, -23, 35, -21], '#d4ae82', .6);
+  }
+  if (load === 'full') {
+    // 朱红包布
+    c.beginPath(); c.moveTo(18, -12); c.quadraticCurveTo(17, -24, 23, -27); c.quadraticCurveTo(29, -30, 36, -26); c.quadraticCurveTo(39, -19, 37, -11); c.closePath();
+    c.fillStyle = '#a6493a'; c.fill(); c.strokeStyle = INK; c.lineWidth = .9; c.stroke();
+    line(c, 21, -24, 33, -21, .5, '#6e2e24'); line(c, 26, -28, 27, -18, .5, '#6e2e24');
+    shape(c, [28, -28, 30.5, -31, 31.5, -27.5], '#a6493a', .6);
+  } else {
+    // 叠好的包布搭在车架上
+    shape(c, [13, -18, 22, -15.5, 22, -12.5, 13, -15], '#a6493a', .7);
+  }
+  // 近侧车辕与轮
+  line(c, 9, -16, ax, ay, 1.6, '#6d543f');
+  line(c, 15, -14, 16.5, -3.5, 1.1, '#6d543f');
+  c.beginPath(); c.arc(ax, ay, r, 0, Math.PI * 2); c.strokeStyle = INK; c.lineWidth = 1.5; c.stroke();
+  for (let k = 0; k < 6; k++) { const a = wheelA + k * Math.PI / 3; line(c, ax, ay, ax + Math.cos(a) * r, ay + Math.sin(a) * r, .6); }
+  eShape(c, ax, ay, 1.2, 1.2, 0, INK);
+  c.restore();
+}
+
+/* 轿子 */
+function sedanBox(c, x, y, s) {
+  c.save(); c.translate(x, y); c.scale(s, s); c.lineCap = 'round';
+  line(c, -34, -23, 34, -23, 1.6, '#5e4836');
+  shape(c, [-9, -32, 9, -32, 9, -9, -9, -9], '#b78c63', .9);
+  shape(c, [9, -32, 13, -35, 13, -12, 9, -9], '#93704f', .7);
+  shape(c, [-11.5, -32, 11, -32, 15, -36, -8, -36], '#6e665e', .8);
+  line(c, -5, -28, -5, -13, .5); line(c, 5, -28, 5, -13, .5); shape(c, [-4, -26, 4, -26, 4, -17, -4, -17], '#e9e0cb', .5);
+  // 插柳
+  c.strokeStyle = '#5d7357'; c.lineWidth = .8;
+  for (let k = 0; k < 7; k++) { c.beginPath(); const bx = -8 + k * 3; c.moveTo(bx, -35); c.quadraticCurveTo(bx + 4, -42, bx + 6 + (k % 2) * 2, -30 + k % 3); c.stroke(); }
+  c.restore();
+}
+
+/* 牛车 */
+function oxCart(c, x, y, s, f, ph) {
+  // 车（在后），牛（在前）
+  c.save(); c.translate(x, y); c.scale(s * f, s); c.lineCap = 'round'; c.lineJoin = 'round';
+  shape(c, [-30, -34, 14, -34, 16, -14, -30, -14], '#a98761', .9);
+  c.beginPath(); c.moveTo(-32, -34); c.quadraticCurveTo(-8, -50, 18, -34); c.closePath(); c.fillStyle = '#7f776d'; c.fill(); c.strokeStyle = INK; c.lineWidth = .9; c.stroke();
+  for (let k = -26; k < 14; k += 5) line(c, k, -34, k + 2, -42 + Math.abs(k + 7) * .12, .4);
+  line(c, 16, -20, 44, -16, 1.4, '#5e4836');
+  c.beginPath(); c.arc(-8, -11, 11, 0, Math.PI * 2); c.strokeStyle = INK; c.lineWidth = 1.7; c.stroke();
+  for (let k = 0; k < 8; k++) { const a = -ph * .4 + k * Math.PI / 4; line(c, -8, -11, -8 + Math.cos(a) * 11, -11 + Math.sin(a) * 11, .6); }
+  c.restore();
+  beast(c, x + 56 * s * f, y, s, f, ph, 'ox', { amp: .7 });
+  beast(c, x + 50 * s * f, y - 5 * s, s * .95, f, ph + 1.3, 'ox', { amp: .7 });
+}
+
+/* 船：沿航向斜投影，船舷与桅杆保持竖直 */
+function boatGeo(L) {
+  return {
+    g: u => -11 - 7 * Math.pow(Math.abs(u) / (L / 2), 2) - (u > 0 ? 3 * u / (L / 2) : 0),
+    b: u => 4 - 10 * Math.pow(Math.abs(u) / (L / 2), 2.2)
+  };
+}
+function drawBoat(c, x, y, sc, ang, o, T) {
+  const L = o.L || 220, bw = o.bw || 26, G = boatGeo(L);
+  const ca = Math.cos(ang), sa = Math.sin(ang);
+  const P = (u, h) => [x + u * sc * ca, y + u * sc * sa + h * sc];
+  const Dw = [DX * bw * sc, DY * bw * sc];
+  const n = 16, us = []; for (let i = 0; i <= n; i++) us.push(-L / 2 + L * i / n);
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  // 甲板（远舷）
+  const near = us.map(u => P(u, G.g(u))), far = near.map(p => [p[0] + Dw[0], p[1] + Dw[1]]);
+  shape(c, near.concat(far.slice().reverse()).flat(), '#c7a982', .8);
+  // 船篷
+  if (o.cabin) {
+    const [u0, u1] = o.cabin, ch = (o.ch || 22);
+    const k = 8, roofN = [], roofF = [];
+    for (let i = 0; i <= k; i++) { const u = lerp(u0, u1, i / k); const p = P(u, G.g(u) - ch); roofN.push(p); roofF.push([p[0] + Dw[0], p[1] + Dw[1]]); }
+    const mid = roofN.map((p, i) => [(p[0] + roofF[i][0]) / 2, (p[1] + roofF[i][1]) / 2 - 8 * sc]);
+    // 侧板
+    const sideB = []; for (let i = k; i >= 0; i--) { const u = lerp(u0, u1, i / k); sideB.push(P(u, G.g(u))); }
+    shape(c, roofN.concat(sideB).flat(), '#b89b74', .8);
+    for (let i = 1; i < k; i++) { const u = lerp(u0, u1, i / k); const a = P(u, G.g(u) - ch), b = P(u, G.g(u) - 3); line(c, a[0], a[1], b[0], b[1], .45); }
+    const wy = -ch * .55; const wa = P(u0 + (u1 - u0) * .15, G.g(u0) + wy), wb = P(u1 - (u1 - u0) * .15, G.g(u1) + wy); line(c, wa[0], wa[1], wb[0], wb[1], .5);
+    // 篷顶
+    const roof = roofN.concat(mid.slice().reverse()).flat();
+    shape(c, roofN.concat(roofF.slice().reverse()).flat(), '#7d7569', .8);
+    shape(c, roofN.concat(mid.slice().reverse()).flat(), '#8f877b', .7);
+    for (let i = 0; i <= k; i++) { c.beginPath(); c.moveTo(roofN[i][0], roofN[i][1]); c.quadraticCurveTo(mid[i][0] - Dw[0] * .1, mid[i][1] - 6 * sc, roofF[i][0], roofF[i][1]); c.strokeStyle = INK; c.lineWidth = .4; c.stroke(); }
+    void roof;
+  }
+  // 船身
+  const hull = near.concat(us.slice().reverse().map(u => P(u, G.b(u)))).flat();
+  shape(c, hull, '#9b7a58', 1);
+  for (const hh of [-4, 1]) { c.beginPath(); us.forEach((u, i) => { const p = P(u, lerp(G.g(u), G.b(u), .3) + hh * .5 + (i ? 0 : 0)); i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]); }); c.strokeStyle = INK; c.lineWidth = .5; c.stroke(); }
+  c.beginPath(); near.forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.strokeStyle = INK; c.lineWidth = 1.5; c.stroke();
+  // 桅
+  if (o.mast) {
+    const mu = o.mastU != null ? o.mastU : L * .22, base = P(mu, G.g(mu)); base[0] += Dw[0] * .5; base[1] += Dw[1] * .5;
+    const ml = (o.mastLen || 130) * sc, ma = o.mastA || 0;
+    const top = [base[0] - ca * Math.sin(ma) * ml, base[1] - sa * Math.sin(ma) * ml - Math.cos(ma) * ml];
+    line(c, base[0], base[1], top[0], top[1], 2 * sc + .4, '#5e4836');
+    const bow = P(L / 2 - 4, G.g(L / 2 - 4)), st = P(-L / 2 + 6, G.g(-L / 2 + 6));
+    line(c, top[0], top[1], bow[0], bow[1], .5, INK, .7); line(c, top[0], top[1], st[0], st[1], .5, INK, .7);
+    const cr = [lerp(base[0], top[0], .82), lerp(base[1], top[1], .82)];
+    line(c, cr[0] - 8 * sc * Math.cos(ma), cr[1], cr[0] + 8 * sc * Math.cos(ma), cr[1], 1, '#5e4836');
+    o._mastTop = top; o._mastBase = base;
+  }
+  // 橹
+  if (o.oar !== false) {
+    const s0 = P(-L / 2 + 6, G.g(-L / 2 + 6) - 2); const sw = Math.sin(T * 1.6 + (o.seed || 0)) * 6 * sc;
+    line(c, s0[0], s0[1], s0[0] - ca * 36 * sc + sw * sa, s0[1] - sa * 36 * sc + 10 * sc + sw * .3, 1.4 * sc + .3, '#6d543f');
+  }
+  // 船员
+  if (o.crew) for (const m of o.crew) {
+    const fp = P(m.u, G.g(m.u)); const fx = fp[0] + Dw[0] * (m.d != null ? m.d : .5), fy = fp[1] + Dw[1] * (m.d != null ? m.d : .5);
+    m.draw(c, fx, fy, sc * 1.02);
+  }
+  // 吃水
+  const wl = us.map(u => P(u, 0.5));
+  c.beginPath(); wl.forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]));
+  for (let i = us.length - 1; i >= 0; i--) { const p = P(us[i], 7); c.lineTo(p[0], p[1]); }
+  c.closePath(); c.fillStyle = 'rgba(205,214,204,.72)'; c.fill();
+  c.beginPath(); for (let i = 0; i < wl.length; i += 2) { c.moveTo(wl[i][0] - 3, wl[i][1] + 1.5); c.lineTo(wl[i][0] + 5, wl[i][1] + 1.5); } c.strokeStyle = INK; c.lineWidth = .45; c.globalAlpha *= .8; c.stroke(); c.globalAlpha /= .8;
+  return { P, Dw, G };
+}
+
+/* 旗幌 */
+function flagDyn(c, x, yb, h, T, col, seed) {
+  c.lineCap = 'round';
+  line(c, x, yb, x, yb - h, 1.4, '#5e4836');
+  line(c, x, yb - h + 2, x + 15, yb - h + 2, 1.1, '#5e4836');
+  const pts = []; const n = 8;
+  for (let i = 0; i <= n; i++) { const t = i / n; pts.push([x + 2 + Math.sin(T * 1.7 + t * 3 + seed) * 1.6 * t, yb - h + 3 + t * 34]); }
+  const right = pts.map((p, i) => [p[0] + 11 + Math.sin(T * 2.1 + i * .7 + seed) * 1.2 * (i / n), p[1]]);
+  shape(c, pts.concat(right.reverse()).flat(), col, .8);
+  for (let k = 0; k < 3; k++) { const p = pts[n]; line(c, p[0] + 2 + k * 4, p[1], p[0] + 2 + k * 4 + Math.sin(T * 2 + k) * 1.5, p[1] + 7, .9, col); }
+}
+
+/* ============ 人物活动与故事 ============ */
+const arng = mulberry32(2026);
+const ACT = [];
+function addAct(a) { a.grp = a.grp || 'fig'; a.r = a.r || 60; ACT.push(a); return a; }
+const laneRoad = off => x => (x > BX0 && x < BX1 ? deckY(x) + off * .7 : roadY(x)) + (x > BX0 && x < BX1 ? 0 : off);
+const bot = x => rivC(x) + rivW(x), topR = x => rivC(x) - rivW(x);
+
+/* —— 送货人路径 —— */
+const HP = { x: [], y: [], s: [] };
+(function () { let s = 0, px = null, py = null; for (let x = 200; x <= 8470; x += 4) { const y = heroY(x); if (px !== null) s += Math.hypot(x - px, y - py); HP.x.push(x); HP.y.push(y); HP.s.push(s); px = x; py = y; } })();
+function sAtX(x) { const i = clamp((x - 200) / 4, 0, HP.x.length - 1.001), k = Math.floor(i); return lerp(HP.s[k], HP.s[k + 1], i - k); }
+function xAtS(s) { let lo = 0, hi = HP.s.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (HP.s[m] < s) lo = m; else hi = m; } const t = (s - HP.s[lo]) / ((HP.s[hi] - HP.s[lo]) || 1); return lerp(HP.x[lo], HP.x[hi], clamp(t, 0, 1)); }
+function ramp(u, r) { r = clamp(r, .001, .49); const v = 1 / (1 - r); if (u <= 0) return 0; if (u >= 1) return 1; if (u < r) return v * u * u / (2 * r); if (u < 1 - r) return v * (u - r / 2); return 1 - v * (1 - u) * (1 - u) / (2 * r); }
+
+const HERO_X0 = 260;
+const LEGS = [
+  { t0: 0, t1: 7, a: 'check' }, { t0: 7, t1: 50, a: 'walk', to: 2580 }, { t0: 50, t1: 60, a: 'ask' },
+  { t0: 60, t1: 90, a: 'walk', to: 4300 }, { t0: 90, t1: 102, a: 'yield' }, { t0: 102, t1: 118, a: 'walk', to: BX1 + 24 },
+  { t0: 118, t1: 163, a: 'walk', to: 7432 }, { t0: 163, t1: 177, a: 'deliver' }, { t0: 177, t1: 195, a: 'walk', to: 8352 },
+  { t0: 195, t1: 201, a: 'park' }, { t0: 201, t1: 1e9, a: 'rest' }
+];
+(function () { let x = HERO_X0; for (const L of LEGS) { L.x0 = x; if (L.to) x = L.to; L.x1 = x; } })();
+const TOUR_END = 214;
+const HERO_STYLE = { robe: '#a39a86', pants: '#5c534a', hat: 'scarf', scarf: '#ece5d4', long: false, skin: COL.skin };
+const BENCH_HERO = [8420, 754];
+
+function heroAt(st) {
+  let L = LEGS[0]; for (const l of LEGS) if (st >= l.t0) L = l;
+  const u = st - L.t0, D = L.t1 - L.t0;
+  const H = { act: L.a, u, f: 1, lean: 0, ph: 0, amp: 0, attached: true, load: st < 165.5 ? 'full' : (st < 166.5 ? 'crate' : 'empty') };
+  if (st < 0) { H.x = HERO_X0; H.act = 'idle'; }
+  else if (L.a === 'walk') {
+    const s0 = sAtX(L.x0), s1 = sAtX(L.x1), s = lerp(s0, s1, ramp(u / D, 1.2 / D));
+    H.x = xAtS(s); H.s = s; H.walk = true; H.amp = clamp(Math.min(u, D - u) / .6, 0, 1);
+  } else H.x = L.x0;
+  H.y = heroY(H.x); H.s = H.s != null ? H.s : sAtX(H.x);
+  H.ph = H.s / 23 * Math.PI * 2;
+  H.lean = H.walk ? .14 : .06;
+  if (L.a === 'check') {
+    if (u < 2.6) H.lean = .55 * smooth(u / .8) * (1 - smooth((u - 2.2) / .4));
+    if (u > .6 && u < 2.4) H.reach = [H.x + 26, H.y - 30 + Math.sin(u * 7) * 1.5];
+    if (u >= 2.6 && u < 4.6) { H.lean = .2; H.reach = [H.x + 30 + Math.sin(u * 5) * 2, H.y - 26]; }
+  } else if (L.a === 'ask') {
+    H.lean = .1;
+    if (u < 1.4) H.lean = .1 + .35 * Math.sin(Math.PI * u / 1.4), H.bow = 1;
+    else if (u < 4) H.gesture = [H.x + 22, H.y - 32 - Math.sin(u * 4) * 2];
+    else if (u > 7.5 && u < 9.2) H.lean = .1 + .4 * Math.sin(Math.PI * (u - 7.5) / 1.7), H.bow = 1;
+  } else if (L.a === 'yield') {
+    const off = smooth((u - .2) / 1.6) * (1 - smooth((u - 9.2) / 1.6));
+    H.yOff = 11 * off; H.xOff = -8 * off; H.walk = off > 0 && off < 1; H.amp = H.walk ? .6 : 0;
+    if (u > 2 && u < 4) H.gesture = [H.x + 20, H.y - 22 + H.yOff];
+    if (u > 4 && u < 6.5) { H.lean = .06 + .25 * Math.sin(Math.PI * (u - 4) / 2.5); H.bow = 1; }
+  } else if (L.a === 'deliver') {
+    if (u < 2.5) H.lean = .1;
+    else if (u < 3.5) { H.lean = .45; H.reach = [H.x + 30, H.y - 30]; }
+    else if (u < 5.2) { const k = smooth((u - 3.5) / 1.5); H.lean = .3; H.carry = [lerp(H.x + 27, H.x + 38, k), lerp(H.y - 22, H.y - 36, k)]; }
+    else if (u < 9.5) { H.lean = .08; }
+    else if (u < 12) { H.lean = .06 + .4 * Math.sin(Math.PI * (u - 9.5) / 2.5); H.bow = 1; }
+  } else if (L.a === 'park') {
+    if (u < 1.5) { H.lean = .3 * Math.sin(Math.PI * u / 1.5); }
+    else {
+      H.attached = false; H.cartX = L.x0; H.cartY = heroY(L.x0);
+      const k = clamp((u - 1.5) / 3.6, 0, 1);
+      H.x = lerp(L.x0 + 6, BENCH_HERO[0], k); H.y = lerp(heroY(L.x0), BENCH_HERO[1], k);
+      H.walk = k > 0 && k < 1; H.amp = H.walk ? 1 : 0; H.ph = (H.x - L.x0) / 23 * Math.PI * 2; H.lean = .1;
+      if (u > 5.1) H.crouch = 6 * smooth((u - 5.1) / .8);
+    }
+  } else if (L.a === 'rest') {
+    H.attached = false; H.cartX = LEGS[9].x0; H.cartY = heroY(H.cartX);
+    H.x = BENCH_HERO[0]; H.y = BENCH_HERO[1]; H.sit = true; H.lean = .05;
+    const r = u - 5; // 喝茶
+    if (r > 0) { const c = r % 11; if (c < 2.6) H.drink = Math.sin(Math.PI * c / 2.6); }
+  }
+  return H;
+}
+
+/* —— 送货人 —— */
+const hero = addAct({
+  name: 'hero', r: 90,
+  update(T, ST) { this.H = heroAt(ST); this.x = this.H.x; this.y = this.H.y + (this.H.yOff || 0); },
+  draw(c, T, ST) {
+    const H = this.H, x = H.x + (H.xOff || 0), y = H.y + (H.yOff || 0), s = ds(y);
+    let po = { f: 1, ph: H.ph, amp: H.walk ? (H.amp || 1) : 0, lean: H.lean, sit: H.sit, crouch: H.crouch };
+    const cx = H.attached ? x : H.cartX, cy = H.attached ? y : H.cartY;
+    const slope = Math.atan2(heroY(cx + 40) - heroY(cx), 40);
+    const handle = (lx, ly) => { const r = rot(lx, ly, slope); return [cx + r[0] * s, cy + r[1] * s]; };
+    if (H.attached) {
+      po.hF = H.reach || H.carry || H.gesture || (H.bow ? [x + 7 * s, y - 27 * s] : handle(9, -16));
+      po.hB = H.carry ? [H.carry[0] - 6 * s, H.carry[1] + 2 * s] : (H.bow ? [x + 6 * s, y - 26 * s] : (H.reach ? handle(11, -18) : handle(10.5, -18.5)));
+      if (H.gesture && !H.bow) po.hB = handle(10.5, -18.5);
+    } else if (H.sit) {
+      po.hB = [x + 9 * s, y - 13 * s];
+      po.hF = H.drink ? [lerp(8452, x + 6 * s, H.drink), lerp(733, y - 30 * s, H.drink)] : [8452 - 2, 733];
+    }
+    // 车在身前（被身体部分挡住前先画）
+    const wheelA = (H.s || 0) / 7.5;
+    barrow(c, cx, cy, H.attached ? s : ds(cy), 1, slope, wheelA, H.load);
+    const out = person(c, x, y, s, HERO_STYLE, po);
+    if (H.carry) drawCrate(c, H.carry[0], H.carry[1], s);
+    if (H.sit) { const cp = H.drink ? po.hF : [8452, 734]; eShape(c, cp[0], cp[1], 2.2, 1.4, 0, '#e9e0cb', .5); }
+    this.head = out.head; this.hand = out.hand;
+  }
+});
+function drawCrate(c, x, y, s) { c.save(); c.translate(x, y); c.scale(s, s); shape(c, [-8, -5, 8, -5, 8, 5, -8, 5], '#c09466', .9); line(c, -8, 0, 8, 0, .5); shape(c, [8, -5, 10.5, -7, 10.5, 3, 8, 5], '#9e7651', .7); shape(c, [-8, -5, -5.5, -7, 10.5, -7, 8, -5], '#d4ae82', .6); c.restore(); }
+
+/* —— 通用行人：明确的起点、终点与速度 —— */
+class Walker {
+  constructor(o) {
+    Object.assign(this, o);
+    this.st = o.style || makeStyle(arng, o.so);
+    this.tw = Math.abs(o.x1 - o.x0) / o.v; this.cyc = 2 * (this.tw + (o.pause || 0));
+    this.grp = o.grp || 'fig'; this.r = o.r || 80;
+  }
+  pos(T) {
+    const p = this.pause || 0, dir = Math.sign(this.x1 - this.x0);
+    const t = (((T + (this.t0 || 0)) % this.cyc) + this.cyc) % this.cyc;
+    if (t < this.tw) return [lerp(this.x0, this.x1, t / this.tw), dir, 1, t * this.v];
+    if (t < this.tw + p) return [this.x1, dir, 0, 0];
+    if (t < 2 * this.tw + p) { const u = t - this.tw - p; return [lerp(this.x1, this.x0, u / this.tw), -dir, 1, u * this.v]; }
+    return [this.x0, -dir, 0, 0];
+  }
+  update(T) { const p = this.pos(T); this.x = p[0]; this.f = p[1]; this.mv = p[2]; this.d = p[3]; this.y = this.lane(this.x); }
+  draw(c, T) {
+    const s = ds(this.y) * (this.sc || 1), ph = this.d / (23 * s) * Math.PI * 2;
+    const goingOut = this.f === Math.sign(this.x1 - this.x0);
+    const k = this.kind || 'p';
+    if (k === 'donkey') {
+      const dx = this.f * 26 * s; beast(c, this.x + dx, this.y + 2, s, this.f, ph * .9, 'donkey', { load: this.load, amp: this.mv });
+      const o = person(c, this.x, this.y, s, this.st, { f: this.f, ph, amp: this.mv, lean: .08, hF: [this.x + this.f * 18 * s, this.y - 22 * s] });
+      line(c, o.hand[0], o.hand[1], this.x + dx + this.f * 15 * s, this.y - 20 * s, .5);
+      this.head = o.head; return;
+    }
+    if (k === 'rider') {
+      const b = beast(c, this.x, this.y, s, this.f, ph * .8, 'horse', { saddle: '#8c3f2f', amp: this.mv });
+      const o = person(c, b.back[0] - this.f * 1 * s, b.back[1] + 2 * s, s, this.st, { f: this.f, sit: true, lean: .02, hF: [this.x + this.f * 14 * s, this.y - 26 * s] });
+      this.head = o.head; return;
+    }
+    if (k === 'caravan') {
+      for (let i = 0; i < 3; i++) beast(c, this.x + this.f * (24 + i * 30) * s, this.y + (i % 2) * 3, s * .95, this.f, ph * .9 + i * 1.7, 'donkey', { load: [COL.ochreL, '#c9bfa6', COL.ochre][i], amp: this.mv });
+      const o = person(c, this.x, this.y, s, this.st, { f: this.f, ph, amp: this.mv, lean: .1, aF: this.mv ? -.6 : .2 });
+      this.head = o.head; return;
+    }
+    const po = { f: this.f, ph, amp: this.mv, lean: this.mv ? .1 : .03 };
+    if (k === 'pole') { po.pole = true; po.poleGoods = this.goods; po.lean = .16; po.hF = null; po.aF = -1.9; po.elbow = -1.2; }
+    if (k === 'sack' && goingOut) { po.sack = 'shoulder'; po.lean = .2; po.aB = -2.3; po.elbow = -.9; }
+    if (k === 'cane') { po.lean = .22; po.hF = [this.x + this.f * 9 * s, this.y - 15 * s]; }
+    if (!this.mv && this.idle) this.idle(po, T);
+    const o = person(c, this.x, this.y, s, this.st, po);
+    if (k === 'cane') line(c, o.hand[0], o.hand[1], this.x + this.f * 11 * s, this.y, 1, '#5e4836');
+    this.head = o.head;
+  }
+}
+const W_ = o => addAct(new Walker(o));
+
+/* —— 静态人物：带动作循环 —— */
+function idleFig(o) {
+  const st = o.style || makeStyle(arng, o.so);
+  return addAct({
+    x: o.x, y: o.y, r: 60, grp: o.grp,
+    update() { },
+    draw(c, T, ST) {
+      const s = ds(this.y) * (o.sc || 1); const po = { f: o.f || 1, lean: o.lean || .04, sit: o.sit };
+      if (o.anim) o.anim(po, T, ST, s, this);
+      const out = person(c, this.x, this.y, s, st, po);
+      this.head = out.head; this.hand = out.hand;
+      if (o.after) o.after(c, out, T, ST, s, this);
+    }
+  });
+}
+
+/* —— 城郊 —— */
+function buildActors() {
+  const R = laneRoad;
+  // 驴队（出城方向）
+  W_({ x0: 1760, x1: 250, v: 17, pause: 10, t0: 40, lane: R(24), kind: 'caravan', so: { hat: 'straw', robe: '#c9bfa6', long: false } });
+  W_({ x0: 120, x1: 1500, v: 24, pause: 6, t0: 10, lane: R(-14), kind: 'pole', goods: '#b9c4a0' });
+  W_({ x0: 1700, x1: 600, v: 21, pause: 12, t0: 70, lane: R(-16), so: { long: true, hat: 'futou' } });
+  W_({ x0: 400, x1: 1350, v: 19, pause: 20, t0: 0, lane: x => 682 - (x - 400) * .004, sc: .85, so: { hat: 'straw' } });
+  // 锄地的农人
+  idleFig({ x: 480, y: 912, f: -1, so: { hat: 'straw', robe: '#c9bfa6', long: false }, anim(po, T) { const c = (T * .6) % 1; po.lean = .35 + .25 * Math.sin(c * Math.PI * 2); po.hF = [this_x(480) - 14, 912 - 22 + 10 * Math.sin(c * Math.PI * 2)]; po.hB = [480 - 10, 912 - 18 + 8 * Math.sin(c * Math.PI * 2)]; }, after(c, out, T) { const c2 = (T * .6) % 1; const hx = out.hand[0], hy = out.hand[1]; line(c, hx + 4, hy - 4, hx - 12, hy + 14 - 4 * Math.sin(c2 * Math.PI * 2), 1, '#5e4836'); line(c, hx - 12, hy + 14 - 4 * Math.sin(c2 * Math.PI * 2), hx - 16, hy + 12 - 4 * Math.sin(c2 * Math.PI * 2), 2, INK); } });
+  // 柳下歇脚的人
+  idleFig({ x: 905, y: 742, sit: true, f: -1, so: { hat: 'bun', robe: '#d8cdb3' }, anim(po, T) { po.hF = [905 - 6, 742 - 22 + Math.sin(T * 2.2) * 2]; } });
+  // 轿子：由故事时间驱动
+  addAct({
+    name: 'sedan', r: 90,
+    update(T, ST) { const k = clamp(ST / 46, 0, 1); this.x = lerp(700, 1600, k); this.mv = ST > 0 && ST < 46; this.y = roadY(this.x) + 20; this.d = this.x - 700; },
+    draw(c, T, ST) {
+      const s = ds(this.y), ph = this.d / (23 * s) * Math.PI * 2;
+      const set = ST >= 46 ? smooth((ST - 46) / 1.5) : 0;
+      const bob = this.mv ? Math.abs(Math.sin(ph)) * 1 : 0;
+      const by = this.y - (1 - set) * 0 + bob * s;
+      const st1 = this.st1 || (this.st1 = makeStyle(arng, { hat: 'scarf', long: false, robe: '#d8cdb3' }));
+      const st2 = this.st2 || (this.st2 = makeStyle(arng, { hat: 'scarf', long: false, robe: '#c9bfa6' }));
+      const st3 = this.st3 || (this.st3 = makeStyle(arng, { hat: 'futou', long: true, robe: '#a9bcb7' }));
+      const poleY = by - 23 * s + set * 12 * s;
+      person(c, this.x - 30 * s, this.y, s, st2, { f: 1, ph: ph + 1.5, amp: this.mv ? 1 : 0, lean: .1, hF: [this.x - 24 * s, poleY], hB: [this.x - 27 * s, poleY] });
+      sedanBox(c, this.x, by + set * 12 * s, s);
+      person(c, this.x + 30 * s, this.y, s, st1, { f: 1, ph, amp: this.mv ? 1 : 0, lean: .1, hF: [this.x + 34 * s, poleY], hB: [this.x + 30 * s, poleY] });
+      const o = person(c, this.x + 60 * s, this.y - 3, s, st3, { f: ST >= 47 ? -1 : 1, ph: ph + .7, amp: this.mv ? 1 : 0, lean: .06 });
+      this.head = o.head;
+    }
+  });
+
+  /* —— 码头 —— */
+  // 停泊的船 A（接力卸货）、C、远岸 E、上行小船 D
+  const boatA = { x: 2905, y: bot(2905) - 11, L: 210, bw: 26, cabin: [-60, 36], mast: true, mastU: 66, mastLen: 120, seed: 1 };
+  const boatC = { x: 3530, y: bot(3530) - 11, L: 200, bw: 26, cabin: [-40, 50], mast: true, mastU: -64, mastLen: 110, seed: 2 };
+  const boatE = { x: 2520, y: topR(2520) + 30, L: 190, bw: 24, cabin: [-50, 40], mast: true, mastU: 60, mastLen: 110, seed: 3 };
+  const mk = (st, fn) => ({ draw: (c, x, y, s) => fn(c, x, y, s, st) });
+  boatC.crew = [{ u: -78, d: .5, draw: (c, x, y, s) => person(c, x, y, s, { robe: '#c9bfa6', pants: '#5a5249', hat: 'bun', long: false, skin: COL.skin }, { f: 1, sit: true, hF: [x + 7 * s, y - 18 * s + Math.sin(performance.now() / 700) * s] }) },
+  { u: 74, d: .45, draw: (c, x, y, s) => person(c, x, y, s, { robe: '#d8cdb3', pants: '#6d655a', hat: 'straw', long: false, skin: COL.skin }, { f: -1, lean: .1 }) }];
+  boatE.crew = [{ u: -70, d: .5, draw: (c, x, y, s) => person(c, x, y, s, { robe: '#9c958a', pants: '#4f4a44', hat: 'straw', long: false, skin: COL.skin }, { f: -1, lean: .2, aF: -1.2 }) }];
+  void mk;
+  for (const b of [boatA, boatC, boatE]) addAct({ grp: 'boat', r: 160, x: b.x, y: b.y, b, f: b === boatC || b === boatE ? -1 : 1, update() { }, draw(c, T) { const s = ds(this.y); const bob = Math.sin(T * 1.2 + b.seed * 2) * 1.1; drawBoat(c, b.x, b.y + bob, s, this.f > 0 ? 0 : Math.PI, b, T); } });
+  // 缆绳
+  addAct({ grp: 'boat', r: 160, x: 2905, y: bot(2905), update() { }, draw(c, T) { const bob = Math.sin(T * 1.2 + 2) * 1.1; c.beginPath(); c.moveTo(2905 + 100, boatA.y - 18 + bob); c.quadraticCurveTo(2880 + 140, bot(2880) + 6, 2880, bot(2880) + 13); c.strokeStyle = INK; c.lineWidth = .7; c.stroke(); c.beginPath(); c.moveTo(3530 - 96, boatC.y - 18); c.quadraticCurveTo(3460, bot(3440) + 8, 3440, bot(3440) + 13); c.stroke(); } });
+  // 上行小船
+  addAct({
+    grp: 'boat', r: 140,
+    update(T) { const per = 180, t = (T + 60) % per; this.k = t / 150; this.vis = t < 150; this.x = lerp(3950, 1460, this.k); this.y = rivC(this.x) + 12 * clamp(rivW(this.x) / 100, 0, 1); },
+    draw(c, T) {
+      if (!this.vis) return; const s = ds(this.y) * .85, a = Math.atan2(rivC(this.x - 6) - rivC(this.x + 6), -12);
+      const fade = clamp((1 - this.k) / .08, 0, 1); c.globalAlpha *= fade;
+      const sw = Math.sin(T * 1.8);
+      drawBoat(c, this.x, this.y, s, a, { L: 120, bw: 18, cabin: [-20, 24], ch: 16, seed: 5, crew: [{ u: -48, d: .5, draw: (cc, x, y, ss) => person(cc, x, y, ss, { robe: '#d8cdb3', pants: '#5a5249', hat: 'straw', long: false, skin: COL.skin }, { f: -1, lean: .25 + sw * .12, hF: [x + 10 * ss, y - 20 * ss], hB: [x + 8 * ss, y - 22 * ss] }) }] }, T);
+      c.globalAlpha /= fade || 1;
+    }
+  });
+  // 远岸小人
+  for (let i = 0; i < 3; i++) W_({ x0: 2300 + i * 380, x1: 2900 + i * 330, v: 12 + i * 2, pause: 8, t0: i * 30, lane: x => topR(x) - 6, sc: .9 });
+  // 码头接力搬运
+  const relay = RELAY;
+  relay.A = boatA;
+  const pStyle = [{ robe: '#ddd3be', pants: '#5a5249', hat: 'scarf', long: false, skin: COL.skin }, { robe: '#c9bfa6', pants: '#6d655a', hat: 'bun', long: false, skin: COL.skin }, { robe: '#a9bcb7', pants: '#4f4a44', hat: 'straw', long: false, skin: COL.skin }];
+  addAct({
+    name: 'relay', r: 200, x: 3000, y: 640,
+    update(T, ST) { },
+    draw(c, T, ST) {
+      const tau = relayTau(T, ST); const A = boatA, s = ds(A.y), G = boatGeo(A.L);
+      const bob = Math.sin(T * 1.2 + A.seed * 2) * 1.1;
+      const dp = (u, d) => [A.x + u * s + DX * A.bw * s * d, A.y + G.g(u) * s + DY * A.bw * s * d + bob];
+      const plankTop = dp(98, .15), plankBot = [plankTop[0] + 46, bot(plankTop[0] + 46) + 20];
+      for (let i = 0; i < 4; i++) { const q = dp(40 + (i % 2) * 9, .35 + (i > 1 ? .3 : 0)); eShape(c, q[0], q[1] - 3 * s - (i > 1 ? 3 * s : 0), 5.5 * s, 3.2 * s, 0, COL.ochreL, .7); }
+      line(c, plankTop[0], plankTop[1], plankBot[0], plankBot[1], 3.4, '#8a6a4c'); line(c, plankTop[0], plankTop[1] + 1.8, plankBot[0], plankBot[1] + 1.8, .6);
+      const p1 = dp(72, .5), p2 = [lerp(plankTop[0], plankBot[0], .5), lerp(plankTop[1], plankBot[1], .5)];
+      const pileX = 3046, pileY = 700, homeX = plankBot[0] + 16, homeY = plankBot[1] + 8;
+      let p3x = homeX, p3y = homeY, f3 = -1, mv3 = 0, sack3 = false, d3 = 0;
+      if (tau != null && tau >= 3.6 && tau < 6.6) { const k = smooth((tau - 3.6) / 3); p3x = lerp(homeX, pileX + 30, k); p3y = lerp(homeY, pileY + 4, k); f3 = 1; mv3 = 1; sack3 = k < .97; d3 = k * 140; }
+      else if (tau != null && tau >= 6.6 && tau < 9.2) { const k = smooth((tau - 6.6) / 2.6); p3x = lerp(pileX + 30, homeX, k); p3y = lerp(pileY + 4, homeY, k); f3 = -1; mv3 = 1; d3 = k * 140; }
+      let sk = null; const src = dp(44, .5);
+      if (tau != null) {
+        if (tau < 1.2) sk = [lerp(src[0], p1[0] + 9 * s, smooth(tau / 1.2)), lerp(src[1] - 5 * s, p1[1] - 26 * s, smooth(tau / 1.2))];
+        else if (tau < 2.4) { const k = smooth((tau - 1.2) / 1.2); sk = [lerp(p1[0] + 9 * s, p2[0] + 6 * s, k), lerp(p1[1] - 26 * s, p2[1] - 26 * s, k) - Math.sin(Math.PI * k) * 6]; }
+        else if (tau < 3.6) { const k = smooth((tau - 2.4) / 1.2); sk = [lerp(p2[0] + 6 * s, p3x - 6 * s, k), lerp(p2[1] - 26 * s, p3y - 30 * s, k) - Math.sin(Math.PI * k) * 6]; }
+      }
+      const reach = (p, has) => has ? [sk[0] - 2, sk[1] + 2] : null;
+      const sp1 = ds(p1[1]), sp2 = ds(p2[1]), sp3 = ds(p3y);
+      const h1 = sk && tau < 1.6, h2 = sk && tau > 1.0 && tau < 2.8, h3 = sk && tau > 2.2;
+      const o1 = person(c, p1[0], p1[1], sp1, pStyle[0], { f: tau != null && tau < .8 ? -1 : 1, lean: h1 ? .35 : (tau == null ? .05 : .12), hF: reach(p1, h1), hB: h1 ? [sk[0] - 5, sk[1] + 3] : null });
+      const o2 = person(c, p2[0], p2[1], sp2, pStyle[1], { f: 1, lean: .1, hF: reach(p2, h2), hB: h2 ? [sk[0] - 5, sk[1] + 3] : null, ph: 0 });
+      if (sk) eShape(c, sk[0], sk[1], 6.5 * s, 3.8 * s, -.2, COL.ochreL, .8);
+      const o3 = person(c, p3x, p3y, sp3, pStyle[2], { f: f3, ph: d3 / 23 * Math.PI * 2, amp: mv3, lean: sack3 ? .2 : .08, sack: sack3 ? 'shoulder' : null, aB: sack3 ? -2.3 : null, elbow: sack3 ? -.9 : null, hF: h3 && tau < 3.6 ? reach(0, true) : null });
+      this.heads = [o1.head, o2.head, o3.head]; this.head = o1.head;
+      // 码头堆的增量
+      const extra = (RELAY.done % 3) + (tau != null && tau >= 6.4 ? 1 : 0);
+      for (let i = 0; i < extra; i++) { const sx = pileX + 52 + i * 13, sy = pileY + 2; eShape(c, sx, sy - 4, 7, 4.2, 0, COL.ochreL, .8); }
+    }
+  });
+  // 码头工头（问路）
+  const foremanSt = { robe: '#b9a58a', pants: '#5a5249', hat: 'futou', long: true, skin: COL.skin };
+  addAct({
+    name: 'foreman', r: 60, x: 2652, y: 720, update() { },
+    draw(c, T, ST) {
+      const u = ST - 50; const po = { f: -1, lean: .04 };
+      if (u > 3.6 && u < 7.4) { po.f = 1; po.hF = [2652 + 22, 720 - 36]; po.lean = .02; }
+      else if (u > 7.6 && u < 9.4) { po.lean = .25 * Math.sin(Math.PI * (u - 7.6) / 1.8); po.hF = [2652 - 7, 720 - 27]; po.hB = [2652 - 6, 720 - 26]; }
+      else if (u < 0 || u > 10) { const k = (T * .25) % 1; if (k < .25) { po.hF = [2652 - 18, 720 - 34 - Math.sin(k * 25) * 2]; } }
+      const o = person(c, 2652, 720, ds(720), foremanSt, po); this.head = o.head;
+    }
+  });
+  // 系缆的人
+  idleFig({ x: 3446, y: bot(3446) + 30, f: 1, so: { hat: 'bun', robe: '#ddd3be', long: false }, anim(po, T) { const k = (T * .45) % 1; const pull = Math.max(0, Math.sin(k * Math.PI * 2)); po.lean = -.18 * pull + .05; po.hF = [3446 + 16 - pull * 5, bot(3446) + 30 - 24]; po.hB = [3446 + 10 - pull * 5, bot(3446) + 30 - 22]; } });
+  // 扛包往返（船 C → 货堆）
+  W_({ x0: 3455, x1: 3318, v: 16, pause: 3, t0: 0, lane: x => lerp(bot(3455) + 28, 704, (3455 - x) / 137), kind: 'sack', so: { long: false, hat: 'scarf' } });
+  W_({ x0: 3470, x1: 3330, v: 15, pause: 4, t0: 9, lane: x => lerp(bot(3470) + 26, 708, (3470 - x) / 140), kind: 'sack', so: { long: false, hat: 'straw' } });
+  // 路边吃食摊
+  idleFig({ x: 2232, y: 790, f: 1, so: { hat: 'scarf', robe: '#e9e0cb', long: false }, anim(po, T) { po.hF = [2242, 774 + Math.sin(T * 3) * 1.5]; } });
+  idleFig({ x: 2214, y: 822, sit: true, f: 1, so: { hat: 'futou', long: true }, anim(po, T) { const k = (T * .2) % 1; po.hF = k < .3 ? [2214 + 6, 822 - 28] : [2214 + 10, 822 - 17]; } });
+  // 路上的挑夫与行人
+  W_({ x0: 1900, x1: 3900, v: 25, pause: 6, t0: 30, lane: R(-14), kind: 'pole', goods: '#c6a273' });
+  W_({ x0: 3800, x1: 2100, v: 20, pause: 10, t0: 5, lane: R(22), so: { long: true, hat: 'futou' } });
+  W_({ x0: 2300, x1: 3700, v: 22, pause: 14, t0: 80, lane: R(-10), kind: 'donkey', load: COL.ochreL, so: { hat: 'straw' } });
+
+  /* —— 虹桥 —— */
+  const bridgeFar = x => (x > BX0 && x < BX1 ? deckY(x) : roadY(x)) - 14;
+  W_({ x0: 4240, x1: 5120, v: 18, pause: 8, t0: 0, lane: bridgeFar, so: { long: true, hat: 'futou' } });
+  W_({ x0: 5160, x1: 4200, v: 21, pause: 6, t0: 20, lane: bridgeFar, kind: 'pole', goods: '#b9c4a0' });
+  W_({ x0: 4300, x1: 5080, v: 16, pause: 10, t0: 50, lane: bridgeFar, kind: 'donkey', load: '#c9bfa6' });
+  W_({ x0: 5100, x1: 4260, v: 19, pause: 7, t0: 35, lane: bridgeFar, so: { hat: 'bun' } });
+  // 桥上摊贩
+  idleFig({ x: 4572, y: deckY(4572) - 16, f: 1, grp: 'fig', so: { hat: 'scarf', long: false }, anim(po, T) { const k = (T * .3) % 1; if (k < .3) po.hF = [4590, deckY(4572) - 44]; }, after(c, out) { shape(c, [4588, deckY(4588) - 16, 4600, deckY(4600) - 16, 4598, deckY(4598) - 22, 4590, deckY(4590) - 22], '#c6a273', .7); } });
+  idleFig({ x: 4822, y: deckY(4822) - 16, f: -1, so: { hat: 'futou', long: true }, anim(po, T) { po.hF = [4810, deckY(4822) - 34 + Math.sin(T * 1.4) * 2]; } });
+  // 凭栏看船的人
+  for (const [wx, f] of [[4628, 1], [4752, -1]]) idleFig({
+    x: wx, y: deckY(wx) - 2, f, so: { long: true }, anim(po, T, ST) {
+      const b = BOATB; const near = b.state === 'pass' && Math.abs(b.x - 4680) < 260;
+      po.lean = near ? .3 : .12; if (near) po.hF = [wx + f * 18, deckY(wx) - 22 + Math.sin(T * 4) * 2];
+    }
+  });
+  // 让路的挑担人和后面的两人
+  const yg = [{ d: 0, so: { hat: 'straw', robe: '#c9bfa6', long: false }, kind: 'pole' }, { d: 1.6, so: { hat: 'futou', long: true, robe: '#a9bcb7' } }, { d: 3.0, so: { hat: 'bun', robe: '#d8cdb3' } }];
+  yg.forEach((g, i) => {
+    const st = makeStyle(arng, g.so); const stopX = [3880, 4170, 3640][i];
+    addAct({
+      name: 'yield' + i, r: 70,
+      update(T, ST) {
+        const t = ST - 92 - g.d, v = 52;
+        const startX = 4720 + i * 22;
+        const s0 = startX, d = Math.max(0, t) * v; let x = s0 - d; this.mv = t > 0 && x > stopX; if (x < stopX) x = stopX;
+        this.x = x; this.f = t > 0 ? -1 : (i === 0 ? 1 : -1); this.y = (x > BX0 && x < BX1 ? deckY(x) - 8 : roadY(x) - 3); this.d = d;
+      },
+      draw(c, T, ST) {
+        const s = ds(this.y), ph = this.d / (23 * s) * Math.PI * 2;
+        const po = { f: this.f, ph, amp: this.mv ? 1 : 0, lean: .1 };
+        if (g.kind === 'pole') { po.pole = true; po.aF = -1.9; po.elbow = -1.2; po.lean = .16; }
+        const o = person(c, this.x, this.y, s, st, po); this.head = o.head;
+      }
+    });
+  });
+  // 船 B：可停可行
+  addAct({ name: 'boatB', grp: 'boat', r: 200, update(T, ST, dt) { boatBUpdate(T, ST, dt); this.x = BOATB.x; this.y = BOATB.y; }, draw(c, T) { boatBDraw(c, T); } });
+  // 岸上喊话的人
+  idleFig({ x: 4300, y: 722, f: 1, so: { hat: 'bun', robe: '#ddd3be', long: false }, anim(po, T) { const b = BOATB; if (b.state === 'pass' && b.x < 4700 && b.x > 4150) { po.hF = [4318, 690 + Math.sin(T * 6) * 3]; po.lean = .05; } else po.hF = null; } }).x = 4262;
+  // 骑马的人、桥头茶摊
+  W_({ x0: 5080, x1: 5960, v: 15, pause: 18, t0: 0, lane: R(20), kind: 'rider', so: { hat: 'futou', long: true, robe: '#a9bcb7' } });
+  idleFig({ x: 4140, y: 812, sit: true, f: 1, so: { long: true, hat: 'futou' }, anim(po, T) { const k = (T * .17) % 1; po.hF = k < .25 ? [4152, 786] : [4156, 796]; } });
+  idleFig({ x: 4222, y: 812, sit: true, f: -1, so: { hat: 'bun' }, anim(po, T) { po.hF = [4210, 794 + Math.sin(T * 2.4) * 1.5]; } });
+  W_({ x0: 4900, x1: 5900, v: 20, pause: 9, t0: 12, lane: R(-12), so: { long: true } });
+  W_({ x0: 5880, x1: 5000, v: 23, pause: 5, t0: 3, lane: R(-16), kind: 'pole', goods: '#d4b083' });
+
+  /* —— 城门与街市 —— */
+  addAct({
+    name: 'oxcart', r: 140,
+    update(T) { if (!this.w) this.w = new Walker({ x0: 6900, x1: 5560, v: 12, pause: 26, t0: 20, lane: R(18), style: HERO_STYLE }); this.w.update(T); this.x = this.w.x; this.y = this.w.y; this.f = this.w.f; this.mv = this.w.mv; this.d = this.w.d; },
+    draw(c, T) {
+      const s = ds(this.y), ph = this.d / 18 * Math.PI * 2;
+      oxCart(c, this.x, this.y, s, this.f, this.mv ? ph : 0);
+      const st = this.st || (this.st = makeStyle(arng, { hat: 'straw', long: false }));
+      const o = person(c, this.x + this.f * 30 * s, this.y + 8, s, st, { f: this.f, ph: ph * 1.2, amp: this.mv, lean: .08, aF: -.9 }); this.head = o.head;
+    }
+  });
+  W_({ x0: 6560, x1: 8100, v: 19, pause: 12, t0: 0, lane: R(22), kind: 'donkey', load: COL.ochre, so: { hat: 'scarf' } });
+  W_({ x0: 8150, x1: 6520, v: 24, pause: 6, t0: 15, lane: R(-14), kind: 'pole', goods: '#b9c4a0' });
+  W_({ x0: 6500, x1: 7700, v: 21, pause: 8, t0: 33, lane: R(-10), so: { long: true, hat: 'futou' } });
+  W_({ x0: 7900, x1: 6900, v: 18, pause: 15, t0: 60, lane: R(28), so: { hat: 'bun' } });
+  W_({ x0: 5600, x1: 6900, v: 22, pause: 10, t0: 47, lane: R(-16), kind: 'sack', so: { hat: 'scarf', long: false } });
+  // 街边伞下的摊贩与顾客
+  for (const [px, f, so] of [[6730, -1, { hat: 'scarf', long: false }], [7340, 1, { hat: 'bun', long: false, robe: '#e9e0cb' }], [7940, -1, { hat: 'straw', long: false }]]) {
+    idleFig({ x: px + 24 * -f, y: 806, f, so, anim(po, T) { const k = (T * .23 + px) % 1; if (k < .25) po.hF = [px - f * 6, 790 + Math.sin(T * 6) * 1.5]; } });
+    idleFig({ x: px + 34 * f, y: 820, f: -f, so: { long: true }, anim(po, T) { const k = (T * .17 + px * .3) % 1; po.lean = .12 + (k < .4 ? .12 : 0); if (k < .4) po.hF = [px + 14 * f, 800]; } });
+  }
+  W_({ x0: 6600, x1: 7600, v: 17, pause: 11, t0: 7, lane: R(6), so: { long: true, hat: 'futou', robe: '#c79f74' } });
+  W_({ x0: 7700, x1: 6700, v: 20, pause: 5, t0: 41, lane: R(-4), kind: 'pole', goods: '#d4b083' });
+  W_({ x0: 8050, x1: 7200, v: 15, pause: 16, t0: 25, lane: R(12), so: { hat: 'bun' } });
+  W_({ x0: 6950, x1: 8000, v: 23, pause: 7, t0: 64, lane: R(34), kind: 'sack', so: { hat: 'straw', long: false } });
+  // 茶客两位
+  idleFig({ x: 6672, y: 754, sit: true, f: 1, so: { long: true, hat: 'futou' }, anim(po, T) { const k = (T * .14) % 1; po.hF = k < .2 ? [6680, 726] : [6690, 735]; } });
+  idleFig({ x: 6730, y: 754, sit: true, f: -1, so: { long: true, hat: 'bun', robe: '#a9bcb7' }, anim(po, T) { const k = (T * .5) % 1; po.hF = [6712, 730 - Math.max(0, Math.sin(k * Math.PI * 2)) * 4]; } });
+  // 交谈的两人
+  idleFig({ x: 6985, y: 718, f: 1, so: { long: true, hat: 'futou' }, anim(po, T) { const k = (T * .3) % 2; if (k < .8) po.hF = [7000, 690 + Math.sin(T * 5) * 2]; } });
+  idleFig({ x: 7012, y: 720, f: -1, so: { long: true, robe: '#c79f74' }, anim(po, T) { const k = (T * .3 + 1) % 2; if (k < .8) po.hF = [6998, 692 + Math.sin(T * 5) * 2]; } });
+  // 食铺：店家与蒸笼
+  idleFig({ x: 6872, y: 706, f: 1, so: { hat: 'scarf', robe: '#e9e0cb', long: false }, anim(po, T) { const k = (T * .4) % 1; po.hF = [6888, 683 - (k < .5 ? 3 : 0)]; } });
+  addAct({ r: 50, x: 6890, y: 692, update() { }, draw(c, T) { for (let i = 0; i < 3; i++) { eShape(c, 6894, 690 - i * 4, 7, 2.2, 0, '#c9a57a', .6); } for (let k = 0; k < 3; k++) { const t = (T * .35 + k / 3) % 1; c.globalAlpha *= (1 - t) * .7; c.beginPath(); const bx = 6890 + k * 4, by = 680 - t * 40; c.moveTo(bx, by + 10); c.bezierCurveTo(bx - 6, by + 4, bx + 6, by - 2, bx + Math.sin(T + k) * 3, by - 8); c.strokeStyle = INK; c.lineWidth = .7; c.stroke(); c.globalAlpha /= ((1 - t) * .7) || 1; } } });
+  // 布店店家（收货）
+  const keeperSt = { robe: '#8fa19a', pants: '#4f4a44', hat: 'futou', long: true, skin: COL.skin };
+  addAct({
+    name: 'keeper', r: 70,
+    update(T, ST) {
+      const u = ST - 163; let x = 7506, y = 713, f = -1;
+      if (u > 0 && u < 2) { const k = smooth(u / 2); x = lerp(7506, 7492, k); y = lerp(713, 724, k); }
+      else if (u >= 2 && u < 13) { x = 7492; y = 724; }
+      else if (u >= 13 && u < 15) { const k = smooth((u - 13) / 2); x = lerp(7492, 7506, k); y = lerp(724, 713, k); }
+      if (u > 7 && u < 8.3) f = 1;
+      this.x = x; this.y = y; this.f = f; this.u = u;
+    },
+    draw(c, T, ST) {
+      const u = this.u, s = ds(this.y); const po = { f: this.f, lean: .05, ph: (this.x - 7506) / 23 * Math.PI * 2, amp: (u > 0 && u < 2) || (u > 13 && u < 15) ? 1 : 0 };
+      let crate = null;
+      if (u > 4.6 && u < 7) { crate = u < 5.2 ? null : [this.x - 9 * s, this.y - 30 * s]; po.lean = .15; }
+      if (crate) { po.hF = [crate[0] - 6 * s, crate[1] + 2 * s]; po.hB = [crate[0] + 5 * s, crate[1] + 3 * s]; }
+      if (u >= 7 && u < 8.3) { const k = smooth((u - 7) / 1.3); crate = [lerp(this.x - 9 * s, 7516, k), lerp(this.y - 30 * s, 717, k)]; po.lean = .35 * Math.sin(Math.PI * k); po.hF = [crate[0] + 4, crate[1]]; }
+      if (u > 9.5 && u < 12) { po.lean = .05 + .4 * Math.sin(Math.PI * (u - 9.5) / 2.5); po.hF = [this.x - 7 * s, this.y - 27 * s]; po.hB = [this.x - 6 * s, this.y - 26 * s]; }
+      if (u < 0 || u > 15) { const k = (T * .2) % 1; if (k < .3) po.hF = [this.x - 12 * s, this.y - 30 * s]; }
+      const o = person(c, this.x, this.y, s, keeperSt, po); this.head = o.head;
+      if (crate) drawCrate(c, crate[0], crate[1], s);
+      if (u >= 8.3) drawCrate(c, 7516, 717, ds(717));
+      if (u >= 5.2 && u < 7 && ST > 0) { /* 查看货物 */ }
+    }
+  });
+  // 叫卖的摊主与顾客
+  addAct(VENDOR);
+  addAct(VCUST);
+  // 旗幌
+  for (const fg of [[5052, 700, 108, '#e9e0cb', 1], [6632, 706, 100, '#a9bcb7', 2], [7402, 706, 104, '#e9e0cb', 3], [8322, 706, 104, '#a9bcb7', 4], [6806, 706, 96, '#c79f74', 5]]) addAct({ x: fg[0], y: fg[1] - 30, r: 40, update() { }, draw(c, T) { flagDyn(c, fg[0], fg[1], fg[2], T, fg[3], fg[4]); } });
+
+  /* —— 茶肆 —— */
+  addAct(TEA);
+  W_({ x0: 8620, x1: 8960, v: 7, pause: 14, t0: 4, lane: R(24), kind: 'cane', so: { long: true, hat: 'bun', robe: '#ddd3be' } });
+  W_({ x0: 8100, x1: 8700, v: 20, pause: 9, t0: 22, lane: R(-14), so: { long: true } });
+  idleFig({ x: 8250, y: 718, f: 1, so: { hat: 'futou', long: true, robe: '#c79f74' }, anim(po, T) { const k = (T * .25) % 1; if (k < .3) po.hF = [8268, 690]; } });
+}
+function this_x(x) { return x; }
+
+/* —— 码头接力：点击或故事触发 —— */
+const RELAY = { t: null, done: 0 };
+function relayStart(T) { if (RELAY.t == null || T - RELAY.t > 9.2) RELAY.t = T; }
+function relayTau(T) { if (RELAY.t == null) return null; const tau = T - RELAY.t; if (tau > 9.2) { RELAY.t = null; RELAY.done++; return null; } return tau; }
+
+/* —— 船 B —— */
+const BOATB = { state: 'moored', s: 0, x: 3990, y: rivC(3990) + 4, alpha: 1, tstart: 0 };
+const BPATH = (() => { const a = []; for (let x = 3990; x <= 5640; x += 6) a.push([x, rivC(x) + 4 * clamp((4200 - x) / 200, 0, 1)]); const s = [0]; for (let i = 1; i < a.length; i++) s.push(s[i - 1] + Math.hypot(a[i][0] - a[i - 1][0], a[i][1] - a[i - 1][1])); return { a, s, len: s[s.length - 1] }; })();
+function bAt(s) { const S_ = BPATH.s; let i = 0; while (i < S_.length - 2 && S_[i + 1] < s) i++; const t = clamp((s - S_[i]) / ((S_[i + 1] - S_[i]) || 1), 0, 1); const p = BPATH.a[i], q = BPATH.a[i + 1]; return [lerp(p[0], q[0], t), lerp(p[1], q[1], t), Math.atan2(q[1] - p[1], q[0] - p[0])]; }
+function boatBStart(T) { if (BOATB.state === 'moored') { BOATB.state = 'pass'; BOATB.tstart = T; } else if (BOATB.state === 'gone') { BOATB.state = 'moored'; BOATB.alpha = 0; BOATB.pending = T + 1.6; } }
+let VIEW = { x0: 0, x1: 2000 };
+function boatBUpdate(T, ST, dt) {
+  const B = BOATB;
+  if (B.pending && T >= B.pending) { B.pending = 0; B.state = 'pass'; B.tstart = T; }
+  if (B.state === 'moored') { B.s = 0; B.alpha = Math.min(1, B.alpha + (dt || 0) * .6); }
+  if (B.state === 'pass') {
+    const t = T - B.tstart, v = 58;
+    B.s = t < 3 ? v * t * t / 6 : v * (t - 1.5);
+    if (B.s >= BPATH.len) { B.state = 'gone'; }
+  }
+  if (B.state === 'gone') { if (VIEW.x1 < 3700 || VIEW.x0 > 4300) { B.state = 'moored'; B.alpha = 0; B.s = 0; } }
+  const p = bAt(B.s); B.x = p[0]; B.y = p[1]; B.ang = B.state === 'moored' ? 0 : p[2];
+  // 落桅与起桅
+  const x = B.x; B.mastA = 1.32 * smooth((x - 4170) / 230) * (1 - smooth((x - 5000) / 260));
+}
+const BCREW = [
+  { robe: '#ddd3be', pants: '#5a5249', hat: 'straw', long: false, skin: COL.skin },
+  { robe: '#c9bfa6', pants: '#4f4a44', hat: 'bun', long: false, skin: COL.skin },
+  { robe: '#a9bcb7', pants: '#5a5249', hat: 'scarf', long: false, skin: COL.skin },
+  { robe: '#c79f74', pants: '#6d655a', hat: 'straw', long: false, skin: COL.skin }
+];
+function boatBDraw(c, T) {
+  const B = BOATB; if (B.state === 'gone') return;
+  const s = ds(B.y) * 1.02, passing = B.state === 'pass';
+  const k = (T * .55) % 1, pushPh = Math.sin(k * Math.PI * 2);
+  const near = passing && Math.abs(B.x - 4600) < 320;
+  const o = {
+    L: 250, bw: 30, cabin: [-62, 52], ch: 24, mast: true, mastU: 82, mastLen: 150, mastA: B.mastA || 0, seed: 7,
+    crew: [
+      { u: 108, d: .55, draw: (cc, x, y, ss) => { const lean = near ? .35 + pushPh * .12 : .1; const o2 = person(cc, x, y, ss, BCREW[0], { f: 1, lean, hF: [x + 14 * ss, y - 26 * ss], hB: [x + 8 * ss, y - 24 * ss] }); if (near) line(cc, x + 24 * ss, y - 40 * ss, x - 20 * ss, y + 36 * ss, 1.2 * ss, '#5e4836'); BCREW[0].head = o2.head; } },
+      { u: 88, d: .25, draw: (cc, x, y, ss) => { const pull = B.mastA > .05 && B.mastA < 1.3; const o2 = person(cc, x, y, ss, BCREW[1], { f: -1, lean: pull ? -.2 : .06, hF: pull ? [x - 10 * ss, y - 30 * ss] : null }); BCREW[1].head = o2.head; } },
+      { u: -82, d: .55, draw: (cc, x, y, ss) => { const lean = passing ? .3 + pushPh * .15 : .05; const o2 = person(cc, x, y, ss, BCREW[2], { f: 1, lean, hF: passing ? [x + 10 * ss, y - 24 * ss] : null, hB: passing ? [x + 6 * ss, y - 22 * ss] : null }); if (passing) line(cc, x + 16 * ss, y - 34 * ss, x - 22 * ss + pushPh * 4, y + 40 * ss, 1.2 * ss, '#5e4836'); BCREW[2].head = o2.head; } },
+      { u: -112, d: .5, draw: (cc, x, y, ss) => { const o2 = person(cc, x, y, ss, BCREW[3], { f: 1, lean: .25, hF: [x - 12 * ss, y - 20 * ss], hB: [x - 10 * ss, y - 18 * ss] }); BCREW[3].head = o2.head; } }
+    ]
+  };
+  const a = c.globalAlpha; c.globalAlpha = a * B.alpha;
+  const bob = Math.sin(T * 1.1) * (passing ? .6 : 1.1);
+  drawBoat(c, B.x, B.y + bob, s, B.ang, o, T);
+  c.globalAlpha = a;
+}
+
+/* —— 街头叫卖 —— */
+const VEND = { t: null };
+const VENDOR = {
+  name: 'vendor', x: 7090, y: 728, r: 60, st: { robe: '#e9e0cb', pants: '#5a5249', hat: 'scarf', long: false, skin: COL.skin },
+  update() { },
+  draw(c, T) {
+    const tau = VEND.t != null ? T - VEND.t : null; if (tau != null && tau > 9) VEND.t = null;
+    const s = ds(728);
+    // 摊架
+    line(c, 7104, 728, 7108, 712, 1, '#5e4836'); line(c, 7120, 728, 7116, 712, 1, '#5e4836');
+    shape(c, [7098, 712, 7126, 712, 7130, 708, 7102, 708], '#b78c63', .8);
+    for (let i = 0; i < 4; i++) eShape(c, 7105 + i * 6, 707, 3, 1.4, 0, '#d9b47e', .5);
+    const po = { f: 1, lean: .04 };
+    let cake = null;
+    if (tau != null && tau < 5.5) { const k = smooth(tau / 1); po.hF = [7098, 728 - lerp(24, 44, k)]; cake = po.hF; }
+    else if (tau != null && tau < 7) { const k = smooth((tau - 5.5) / 1.2); po.hF = [lerp(7098, 7118, k), lerp(684, 704, k)]; cake = po.hF; }
+    else { const k = (T * .22) % 1; if (k < .2) po.hF = [7098, 698 + Math.sin(T * 7) * 1.5]; }
+    const o = person(c, 7090, 728, s, this.st, po); this.head = o.head;
+    if (cake) eShape(c, cake[0] + 1.5, cake[1] - 2, 3.4, 1.8, -.2, '#d9b47e', .6);
+  }
+};
+const VCUST = {
+  name: 'vcust', r: 60, st: { robe: '#a9bcb7', pants: '#4f4a44', hat: 'futou', long: true, skin: COL.skin },
+  w: null,
+  update(T) {
+    if (!this.w) this.w = new Walker({ x0: 6880, x1: 7380, v: 16, pause: 6, t0: 0, lane: x => roadY(x) - 6, style: this.st });
+    const tau = VEND.t != null ? T - VEND.t : null;
+    if (tau != null && tau < 9) {
+      if (this.anchor == null) { this.w.update(T); this.anchor = this.w.x; this.anchorF = this.w.f; }
+      const target = 7122; const k = smooth(tau / 2.5);
+      const back = tau > 7 ? smooth((tau - 7) / 2) : 0;
+      this.x = lerp(this.anchor, target, k) + back * 30; this.f = tau > 7 ? 1 : (this.anchor > target ? -1 : 1); if (k >= 1 && tau <= 7) this.f = -1;
+      this.mv = (k > 0 && k < 1) || (back > 0 && back < 1); this.d = Math.abs(this.x - this.anchor);
+      this.y = roadY(this.x) - 6; this.tau = tau;
+    } else { this.anchor = null; this.w.update(T); this.x = this.w.x; this.f = this.w.f; this.mv = this.w.mv; this.d = this.w.d; this.y = this.w.y; this.tau = null; }
+  },
+  draw(c, T) {
+    const s = ds(this.y), po = { f: this.f, ph: this.d / (23 * s) * Math.PI * 2, amp: this.mv ? 1 : 0, lean: .08 };
+    if (this.tau != null && this.tau > 2.5 && this.tau < 5.5) { po.lean = .28; po.hF = [this.x - 12 * s, this.y - 26 * s]; }
+    if (this.tau != null && this.tau > 6.2 && this.tau < 7.2) po.hF = [7110, 708];
+    const o = person(c, this.x, this.y, s, this.st, po); this.head = o.head;
+  }
+};
+
+/* —— 茶肆：斟茶、举杯 —— */
+const TEAH = { t: null };
+const TEA = {
+  name: 'tea', x: 8470, y: 750, r: 120,
+  sv: { robe: '#e9e0cb', pants: '#5a5249', hat: 'scarf', long: false, skin: COL.skin },
+  c1: { robe: '#a9bcb7', pants: '#4f4a44', hat: 'futou', long: true, skin: COL.skin },
+  c2: { robe: '#c9bfa6', pants: '#6d655a', hat: 'bun', long: true, skin: COL.skin },
+  update() { },
+  draw(c, T, ST) {
+    let tau = TEAH.t != null ? T - TEAH.t : null; if (tau != null && tau > 10) { TEAH.t = null; tau = null; }
+    // 故事里给送货人斟茶
+    const heroPour = ST > 202 && ST < 206.5 ? ST - 201.5 : null;
+    const pt = tau != null ? tau : heroPour;
+    const svx = 8484, svy = 742, s = ds(svy);
+    const cupA = [8450, 734], cupB = [8474, 734];
+    // 杯
+    const po = { f: -1, lean: .05 };
+    let pot = [svx - 10 * s, svy - 26 * s], tilt = 0;
+    if (pt != null && pt < 4.2) {
+      const k = smooth(pt / 1); const cup = tau != null ? cupB : cupA;
+      pot = [lerp(svx - 10 * s, cup[0] + 9, k), lerp(svy - 26 * s, cup[1] - 13, k)]; tilt = pt > 1 && pt < 3.6 ? .9 : 0; po.lean = .2 * k;
+    }
+    po.hF = pot;
+    const o = person(c, svx, svy, s, this.sv, po); this.svHead = o.head;
+    c.save(); c.translate(pot[0], pot[1]); c.rotate(-tilt); shape(c, [-4, 0, 4, 0, 5, 6, -5, 6], '#7f9ea2', .7); line(c, -5, 2, -9, -1, 1, INK); c.restore();
+    if (tilt > 0) { const sp = [pot[0] - 7, pot[1] - 2]; const cup = tau != null ? cupB : cupA; c.beginPath(); c.moveTo(sp[0], sp[1]); c.quadraticCurveTo(sp[0] - 2, sp[1] + 6, cup[0] + 1, cup[1] - 1); c.strokeStyle = 'rgba(160,130,90,.8)'; c.lineWidth = .8; c.stroke(); }
+    // 右侧茶客
+    const raise = tau != null && tau > 3.6 && tau < 7.5 ? Math.sin(Math.PI * clamp((tau - 3.6) / 3.9, 0, 1)) : 0;
+    const sip = ((T * .13) % 1) < .18 ? Math.sin(Math.PI * ((T * .13) % 1) / .18) : 0;
+    const r1 = Math.max(raise, sip);
+    const c1x = 8510, c1y = 754, s1 = ds(c1y);
+    const cp1 = [lerp(cupB[0], c1x - 7 * s1, r1), lerp(cupB[1], c1y - 30 * s1, r1)];
+    const o1 = person(c, c1x, c1y, s1, this.c1, { f: -1, sit: true, lean: .04, hF: [cp1[0] + 1, cp1[1] + 1] }); this.c1Head = o1.head;
+    eShape(c, cp1[0], cp1[1], 2.2, 1.4, 0, '#e9e0cb', .5);
+    // 左侧老茶客（送货人到来前离座）
+    let c2x = 8420, c2y = 754, sit = true, f2 = 1, mv = 0, d = 0;
+    if (ST >= 186) { sit = false; const k = clamp((ST - 186.5) / 6, 0, 1); c2x = lerp(8420, 8262, smooth(k)); c2y = lerp(752, 724, smooth(k)); f2 = -1; mv = k > 0 && k < 1 ? 1 : 0; d = (8420 - c2x); }
+    {
+      if (ST < 186) {
+        const r2 = tau != null && tau > 5.2 && tau < 8.5 ? Math.sin(Math.PI * (tau - 5.2) / 3.3) : 0;
+        const cp2 = [lerp(cupA[0], c2x + 7 * s1, r2), lerp(cupA[1], c2y - 30 * s1, r2)];
+        const o2 = person(c, c2x, c2y, s1, this.c2, { f: 1, sit: true, lean: .04, hF: [cp2[0] - 1, cp2[1] + 1] }); this.c2Head = o2.head;
+        eShape(c, cp2[0], cp2[1], 2.2, 1.4, 0, '#e9e0cb', .5);
+      } else { const o2 = person(c, c2x, c2y, ds(c2y), this.c2, { f: f2, ph: d / 23 * Math.PI * 2, amp: mv, lean: .1 }); this.c2Head = o2.head; }
+    }
+    this.head = this.svHead;
+  }
+};
+
+/* ============ 建筑细看：一座两层铺面逐步成形 ============ */
+const DET = [];
+const DSTEP = 2.6;
+const DNOTES = [
+  '先立柱，再架梁。柱与柱之间叫一“间”，这座铺面面阔五间。',
+  '柱头上的斗拱托住出挑的屋檐；瓦垄一行行铺开，檐角微微起翘。',
+  '上层是格子窗和平座栏杆；下层装可卸的门板，白天卸下就是敞开的铺面。',
+  '柜台、货架、布匹、坛罐、灯笼和秤，一家店的日子都落在这些物件上。',
+  '最后薄薄上色：瓦用灰青，木作用淡赭，布匹点一点朱红和石绿。'
+];
+function buildDetail() {
+  const keep = TGT; TGT = DET; const r0 = rng; rng = mulberry32(99);
+  const st = k => k;   // 步骤即 st
+  const s = (pts, w, a, k, col, tp) => S(pts, w, a, st(k), col, tp);
+  const f = (pts, col, a, k, m) => F(pts, col, a, st(k), m);
+  obj(0, 0);
+  const GY = 690;
+  // 0 梁柱
+  s(seg(60, GY, 1220, GY), 1.6, .7, 0);
+  const plat = [140, GY - 34, 1140, GY - 34, 1150, GY, 130, GY];
+  s(plat.concat(plat.slice(0, 2)), 2, .85, 0);
+  for (let x = 160; x < 1140; x += 54) s([x, GY - 32, x, GY - 2], .7, .45, 0, COL.ink, 0);
+  s(seg(140, GY - 17, 1145, GY - 17), .7, .45, 0);
+  for (const x of [470, 790]) for (let k = 0; k < 3; k++) s([x + k * 6, GY + 8 - k * 14, x + 100 - k * 6, GY + 8 - k * 14], 1.2, .7, 0);
+  const P1 = [200, 368, 536, 704, 872, 1040], P2 = [232, 395, 558, 721, 884, 1047];
+  for (const x of P1) { s([x - 6, GY - 34, x - 6, 432], 2.2, .9, 0, COL.ink, 0); s([x + 6, GY - 34, x + 6, 432], 2.2, .9, 0, COL.ink, 0); s([x - 13, GY - 34, x + 13, GY - 34, x + 11, GY - 44, x - 11, GY - 44, x - 13, GY - 34], 1, .75, 0, COL.ink, 0); }
+  s(seg(184, 432, 1056, 432), 2.4, .9, 0); s(seg(184, 446, 1056, 446), 1.6, .85, 0);
+  s(seg(190, 384, 1050, 384), 2, .9, 0);
+  for (const x of P2) { s([x - 5, 382, x - 5, 222], 2, .9, 0, COL.ink, 0); s([x + 5, 382, x + 5, 222], 2, .9, 0, COL.ink, 0); }
+  s(seg(216, 222, 1064, 222), 2.2, .9, 0); s(seg(216, 234, 1064, 234), 1.4, .8, 0);
+  // 1 屋檐斗拱
+  for (const x of P1) { s([x - 18, 432, x + 18, 432, x + 18, 422, x - 18, 422, x - 18, 432], 1.2, .85, 1, COL.ink, 0); s([x - 9, 422, x + 9, 422, x + 9, 410, x - 9, 410, x - 9, 422], 1.1, .85, 1, COL.ink, 0); s(qd(x - 28, 414, x, 400, x + 28, 414, 8), 1.2, .85, 1); }
+  for (const x of P2) { s([x - 15, 222, x + 15, 222, x + 15, 213, x - 15, 213, x - 15, 222], 1.1, .85, 1, COL.ink, 0); s(qd(x - 24, 208, x, 196, x + 24, 208, 8), 1.1, .85, 1); }
+  // 腰檐
+  const pe = cb(110, 410, 300, 432, 980, 432, 1170, 410, 24);
+  s(pe, 2.4, .9, 1); s(pe.map((v, i) => i % 2 ? v - 6 : v), 1, .6, 1);
+  s(seg(176, 388, 1064, 388), 1.6, .85, 1); s([110, 410, 176, 388], 1.4, .85, 1); s([1170, 410, 1064, 388], 1.4, .85, 1);
+  for (let k = 1; k < 90; k++) { const t = k / 90, i = Math.round(t * 24) * 2; const x = pe[i], y = pe[i + 1]; const tx = lerp(176, 1064, (x - 110) / 1060); s([x, y - 6, tx, 390], .7, .5, 1, COL.ink, 0); }
+  // 主屋顶
+  const me = cb(84, 210, 300, 238, 980, 238, 1196, 210, 28);
+  s(me, 2.6, .92, 1); s(me.map((v, i) => i % 2 ? v - 7 : v), 1.1, .6, 1);
+  s(seg(400, 100, 880, 100), 4, .92, 1);
+  s(qd(84, 210, 230, 160, 400, 100, 12), 2, .9, 1); s(qd(1196, 210, 1050, 160, 880, 100, 12), 2, .9, 1);
+  s(qd(400, 100, 388, 86, 396, 70, 6), 3, .9, 1); s(qd(880, 100, 892, 86, 884, 70, 6), 3, .9, 1);
+  for (let k = 1; k < 120; k++) {
+    const t = k / 120, i = Math.round(t * 28) * 2; const x = me[i], y = me[i + 1];
+    let ex, ey;
+    if (x < 400 - 40) { const q = (x - 84) / (360 - 84); ex = lerp(84, 400, q) + 40 * q; ey = lerp(210, 100, q); }
+    else if (x > 880 + 40) { const q = (1196 - x) / (1196 - 920); ex = lerp(1196, 880, q) - 40 * q; ey = lerp(210, 100, q); }
+    else { ex = x; ey = 102; }
+    if (Math.hypot(ex - x, ey - y) > 8) s([x, y - 7, ex, ey], .8, .5, 1, COL.ink, 0);
+  }
+  // 2 门窗栏杆
+  s(seg(214, 352, 1066, 352), 1.8, .88, 2); s(seg(214, 380, 1066, 380), 1.6, .85, 2);
+  for (let x = 220; x < 1064; x += 16) s([x, 352, x, 380], .8, .7, 2, COL.ink, 0);
+  for (let x = 232; x < 1047; x += 163) { s([x + 20, 366, x + 60, 366], .6, .5, 2); s([x + 100, 366, x + 140, 366], .6, .5, 2); }
+  for (let b = 0; b < 5; b++) {
+    const x0 = P2[b] + 12, x1 = P2[b + 1] - 12, y0 = 252, y1 = 340;
+    s([x0, y0, x1, y0, x1, y1, x0, y1, x0, y0], 1.3, .85, 2, COL.ink, 0);
+    for (let x = x0 + 10; x < x1; x += 10) s([x, y0, x, y1], .6, .55, 2, COL.ink, 0);
+    for (let y = y0 + 11; y < y1; y += 11) s([x0, y, x1, y], .5, .45, 2, COL.ink, 0);
+  }
+  s([590, 238, 690, 238, 690, 256, 590, 256, 590, 238], 1.4, .85, 2, COL.ink, 0); s([596, 242, 684, 242, 684, 252, 596, 252, 596, 242], .6, .6, 2, COL.ink, 0);
+  for (const b of [0, 4]) {
+    const x0 = P1[b] + 14, x1 = P1[b + 1] - 14;
+    s([x0, 480, x1, 480, x1, 580, x0, 580, x0, 480], 1.3, .85, 2, COL.ink, 0);
+    for (let x = x0 + 9; x < x1; x += 9) s([x, 480, x, 580], .55, .5, 2, COL.ink, 0);
+    s([x0, 600, x1, 600], 1, .7, 2); for (let x = x0 + 18; x < x1; x += 18) s([x, 600, x, GY - 36], .5, .45, 2, COL.ink, 0);
+  }
+  for (let b = 1; b < 4; b++) {
+    const x0 = P1[b] + 8, x1 = P1[b + 1] - 8;
+    for (const sx of [x0, x1 - 22]) { s([sx, 460, sx + 22, 460, sx + 22, GY - 36, sx, GY - 36, sx, 460], 1, .8, 2, COL.ink, 0); s([sx + 3, 470, sx + 19, 470], .5, .5, 2); }
+    const cp = []; for (let x = x0; x <= x1; x += 8) cp.push(x, 478 + ((x - x0) / 8 % 2 ? 4 : 0)); s(cp, 1, .7, 2);
+  }
+  // 3 内部陈设
+  for (let b = 1; b < 4; b++) { const x0 = P1[b] + 32, x1 = P1[b + 1] - 32; s([x0, 500, x1, 500], .8, .6, 3); }
+  for (const y of [520, 566]) s(seg(406, y, 666, y), 1.4, .85, 3);
+  const bolt = [COL.red, COL.cyan, COL.ochreL, COL.green, COL.white, COL.cyan, COL.red];
+  for (let i = 0; i < 9; i++) { const x = 412 + i * 28; s([x, 520, x + 22, 520, x + 22, 506, x, 506, x, 520], .8, .8, 3, COL.ink, 0); s([x, 566, x + 22, 566, x + 22, 548 + (i % 3) * 3, x, 548 + (i % 3) * 3, x, 566], .8, .8, 3, COL.ink, 0); }
+  s([560, 610, 860, 610], 2.4, .9, 3); s([560, 610, 560, GY - 36], 1.2, .85, 3, COL.ink, 0); s([860, 610, 860, GY - 36], 1.2, .85, 3, COL.ink, 0); s([560, 630, 860, 630], .7, .6, 3);
+  for (let i = 0; i < 4; i++) { const x = 760 + i * 24; s(qd(x - 8, GY - 36, x - 12, GY - 56, x - 4, GY - 64, 6).concat([x + 4, GY - 64]).concat(qd(x + 4, GY - 64, x + 12, GY - 56, x + 8, GY - 36, 6)), 1, .85, 3); }
+  s([600, 446, 600, 474], .7, .7, 3, COL.ink, 0); s(ell(600, 486, 10, 13, 16), 1.1, .85, 3); s([592, 474, 608, 474], 1, .8, 3); s([592, 499, 608, 499], 1, .8, 3);
+  s([700, 446, 700, 470], .6, .6, 3, COL.ink, 0); s([680, 470, 724, 466], 1.2, .85, 3); s([682, 470, 682, 486], .5, .6, 3); s(ell(682, 489, 6, 2.5, 10), .8, .75, 3); s([716, 467, 716, 476], .5, .6, 3); s(ell(716, 478, 3, 3, 8), .8, .75, 3);
+  s([900, 600, 980, 600], 1.8, .85, 3); s([906, 600, 906, GY - 36], 1, .8, 3, COL.ink, 0); s([974, 600, 974, GY - 36], 1, .8, 3, COL.ink, 0);
+  for (const x of [890, 990]) { s([x - 10, 628, x + 10, 628], 1.4, .85, 3); s([x - 8, 628, x - 8, GY - 36], .8, .75, 3, COL.ink, 0); s([x + 8, 628, x + 8, GY - 36], .8, .75, 3, COL.ink, 0); }
+  s(ell(928, 594, 6, 3, 10), .9, .8, 3); s(ell(950, 594, 6, 3, 10), .9, .8, 3);
+  // 4 敷色
+  f(me.concat([880, 100, 400, 100]), COL.roof, .42, 4);
+  f(pe.concat([1064, 388, 176, 388]), COL.roof, .38, 4);
+  for (const x of P1) f([x - 6, GY - 34, x + 6, GY - 34, x + 6, 432, x - 6, 432], COL.wood, .5, 4);
+  for (const x of P2) f([x - 5, 382, x + 5, 382, x + 5, 222, x - 5, 222], COL.wood, .5, 4);
+  f([184, 432, 1056, 432, 1056, 446, 184, 446], COL.red, .35, 4);
+  f([216, 222, 1064, 222, 1064, 234, 216, 234], COL.red, .35, 4);
+  f([214, 352, 1066, 352, 1066, 380, 214, 380], COL.red, .22, 4);
+  for (let b = 1; b < 4; b++) f([P1[b] + 6, 446, P1[b + 1] - 6, 446, P1[b + 1] - 6, GY - 34, P1[b] + 6, GY - 34], COL.ink, .14, 4);
+  for (let b = 1; b < 4; b++) f([P1[b] + 8, 446, P1[b + 1] - 8, 446, P1[b + 1] - 8, 480, P1[b] + 8, 480], COL.cyan, .4, 4);
+  for (let i = 0; i < 9; i++) { const x = 412 + i * 28; f([x, 520, x + 22, 520, x + 22, 506, x, 506], bolt[i % 7], .6, 4); f([x, 566, x + 22, 566, x + 22, 548 + (i % 3) * 3, x, 548 + (i % 3) * 3], bolt[(i + 3) % 7], .6, 4); }
+  f([560, 610, 860, 610, 860, GY - 36, 560, GY - 36], COL.wood, .35, 4);
+  f(ell(600, 486, 10, 13, 16), COL.red, .5, 4);
+  f(plat, COL.grey, .3, 4);
+  f([590, 238, 690, 238, 690, 256, 590, 256], COL.ochre, .4, 4);
+  for (let i = 0; i < 4; i++) { const x = 760 + i * 24; f([x - 8, GY - 36, x - 12, GY - 56, x - 4, GY - 64, x + 4, GY - 64, x + 12, GY - 56, x + 8, GY - 36], COL.ochre, .45, 4); }
+  TGT = keep; rng = r0;
+  let end = 0;
+  const cnt = new Map(), ord = new Map(); for (const p of DET) cnt.set(p.st, (cnt.get(p.st) || 0) + 1);
+  for (const p of DET) {
+    prepPrim(p); const o = ord.get(p.st) || 0; ord.set(p.st, o + 1);
+    p.t0 = p.st * DSTEP + o * Math.min(.05, (DSTEP - .8) / cnt.get(p.st));
+    p.t1 = p.t0 + (p.k === 0 ? clamp(p.len / 420, .2, .8) : 1.2); end = Math.max(end, p.t1);
+  }
+  return end;
+}
+let DET_END = 0, detT = 0, detOn = false;
+const detStyle = { robe: '#8fa19a', pants: '#4f4a44', hat: 'futou', long: true, skin: COL.skin };
+const detStyle2 = { robe: '#c79f74', pants: '#5a5249', hat: 'bun', long: true, skin: COL.skin };
+function drawDetail(c, w, h, t) {
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.fillStyle = COL.paper; c.fillRect(0, 0, w, h);
+  if (AGING) c.drawImage(AGING, 0, 0, AGING.width * .4, AGING.height, 0, 0, w, h);
+  c.setTransform(w / 1280, 0, 0, h / 760, 0, 0);
+  c.lineJoin = 'round';
+  for (const p of DET) drawPrim(c, p, t);
+  gco(c, 0);
+  const a = smooth((t - 3 * DSTEP - 1) / 1.2);
+  if (a > 0) {
+    c.globalAlpha = a;
+    const sw = Math.sin(t * 1.3);
+    person(c, 640, 640, 3.3, detStyle, { f: 1, lean: .05, hF: [700, 560 + sw * 4] });
+    person(c, 930, GY_D, 3.2, detStyle2, { f: -1, sit: true, hF: [916, 592] });
+    c.globalAlpha = 1;
+  }
+  if (PAPERPAT) { c.setTransform(1, 0, 0, 1, 0, 0); gco(c, 1); c.fillStyle = PAPERPAT; c.fillRect(0, 0, w, h); gco(c, 0); }
+}
+const GY_D = 690 - 36;
+
+/* ============ 纸面、相机、渲染循环、交互、声音 ============ */
+const $ = id => document.getElementById(id);
+const cv = $('scroll'), ctx = cv.getContext('2d');
+let vw = 0, vh = 0, dpr = 1, s0 = 1;
+const cam = { x: 700, y: H / 2, z: 1 };
+let mode = 'intro';          // intro, unroll, grow, overview, tour, free, scene
+let growT = -1, T = 0, ST = 0, storyOn = false, paused = false, RM = false;
+let unrollT = 0, overviewT = 0, lastFrame = 0;
+let tween = null, prevMode = 'free', sceneHot = null, savedCam = null;
+let endShown = false, hintMode = 'soft';
+let AGING = null, PAPERPAT = null, MINI = null;
+const isTouch = matchMedia('(pointer: coarse)').matches;
+try { RM = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { }
+
+/* —— 纸 —— */
+function makePaper() {
+  const a = document.createElement('canvas'); a.width = 1800; a.height = 220;
+  const c = a.getContext('2d'); const r = mulberry32(5);
+  c.fillStyle = COL.paper; c.fillRect(0, 0, a.width, a.height);
+  for (let i = 0; i < 90; i++) {
+    const x = r() * a.width, y = r() * a.height, rad = 20 + r() * 120;
+    const g = c.createRadialGradient(x, y, 0, x, y, rad); const dark = r() < .6;
+    g.addColorStop(0, dark ? 'rgba(150,115,70,.07)' : 'rgba(255,248,230,.08)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = g; c.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+  }
+  const gy = c.createLinearGradient(0, 0, 0, a.height);
+  gy.addColorStop(0, 'rgba(120,90,50,.16)'); gy.addColorStop(.05, 'rgba(120,90,50,0)'); gy.addColorStop(.95, 'rgba(120,90,50,0)'); gy.addColorStop(1, 'rgba(120,90,50,.18)');
+  c.fillStyle = gy; c.fillRect(0, 0, a.width, a.height);
+  for (let i = 0; i < 40; i++) { c.fillStyle = 'rgba(130,100,60,' + (.02 + r() * .03) + ')'; c.fillRect(r() * a.width, 0, 1 + r() * 3, a.height); }
+  AGING = a;
+  const p = document.createElement('canvas'); p.width = p.height = 256;
+  const q = p.getContext('2d'); q.fillStyle = '#fff'; q.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 260; i++) {
+    const x = r() * 256, y = r() * 256, L = 4 + r() * 18, an = (r() - .5) * .9;
+    q.strokeStyle = 'rgba(120,92,58,' + (.05 + r() * .09) + ')'; q.lineWidth = .4 + r() * .7;
+    q.beginPath(); q.moveTo(x, y); q.quadraticCurveTo(x + Math.cos(an) * L * .5, y + Math.sin(an) * L * .5 + (r() - .5) * 3, x + Math.cos(an) * L, y + Math.sin(an) * L); q.stroke();
+  }
+  for (let i = 0; i < 900; i++) { q.fillStyle = 'rgba(110,85,50,' + (r() * .08) + ')'; q.fillRect(r() * 256, r() * 256, 1, 1); }
+  PAPERPAT = ctx.createPattern(p, 'repeat');
+}
+
+/* —— 尺寸 —— */
+function zFull() { const fit = (vw - 32) / (W + 260) / s0; return vw < 700 ? Math.max(fit, .26) : fit; }
+function resize() {
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  vw = innerWidth; vh = innerHeight;
+  cv.width = Math.round(vw * dpr); cv.height = Math.round(vh * dpr);
+  s0 = vh / (H + 70);
+  sizeMini(); clampCam(cam);
+}
+function clampCam(c) {
+  const s = s0 * c.z; c.z = clamp(c.z, zFull() * .98, 6);
+  const hw = vw / 2 / (s0 * c.z), hh = vh / 2 / (s0 * c.z);
+  if (hw * 2 >= W + 300) c.x = W / 2; else c.x = clamp(c.x, -170 + hw, W + 170 - hw);
+  if (hh * 2 >= H + 70) c.y = H / 2; else c.y = clamp(c.y, -35 + hh, H + 35 - hh);
+  void s;
+}
+
+/* —— 渲染 —— */
+function figAlpha(x) { if (growT >= GROW_END + 1) return 1; if (growT < 0) return 0; return smooth((growT - (x / W * WAVE + FIGOFF)) / 1.2); }
+function drawMount(c, vx0, vx1) {
+  // 上下包首绫边
+  c.fillStyle = '#4b5754'; c.fillRect(-150, -30, W + 300, 30); c.fillRect(-150, H, W + 300, 30);
+  c.fillStyle = 'rgba(255,255,255,.05)'; for (let x = Math.max(-150, Math.floor(vx0 / 14) * 14); x < Math.min(W + 150, vx1); x += 14) { c.fillRect(x, -30, 7, 30); c.fillRect(x + 7, H, 7, 30); }
+  c.fillStyle = '#3e4846'; c.fillRect(-150, -30, 150, H + 60); c.fillRect(W, -30, 150, H + 60);
+  c.fillStyle = '#2d2219'; c.fillRect(-152, -3, W + 304, 3); c.fillRect(-152, H, W + 304, 3);
+  // 轴
+  for (const rx of [-150, W + 150]) {
+    const g = c.createLinearGradient(rx - 14, 0, rx + 14, 0); g.addColorStop(0, '#3b2a1c'); g.addColorStop(.45, '#8f6a47'); g.addColorStop(1, '#4a3424');
+    c.fillStyle = g; c.fillRect(rx - 14, -46, 28, H + 92);
+    c.fillStyle = '#2a1e15'; c.fillRect(rx - 10, -66, 20, 22); c.fillRect(rx - 10, H + 44, 20, 22);
+  }
+}
+function render() {
+  const s = s0 * cam.z;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  const tx = vw / 2 - cam.x * s, ty = vh / 2 - cam.y * s;
+  ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * tx, dpr * ty);
+  ctx.lineJoin = 'round';
+  const vx0 = cam.x - vw / 2 / s - 30, vx1 = cam.x + vw / 2 / s + 30;
+  VIEW.x0 = vx0; VIEW.x1 = vx1;
+  let reveal = 1e9;
+  if (mode === 'intro') reveal = -150;
+  if (mode === 'unroll') reveal = lerp(-150, vx1 + 60, ease(unrollT / 2.6));
+  ctx.save();
+  ctx.beginPath(); ctx.rect(-200, -80, reveal + 200, H + 160); ctx.clip();
+  drawMount(ctx, vx0, vx1);
+  ctx.drawImage(AGING, 0, 0, W, H);
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+  if (mode !== 'intro' && growT >= 0) {
+    const eff = s * dpr, g = growT >= GROW_END ? 1e9 : growT;
+    tileBudget = growT >= GROW_END ? 3 : 2; frameNo++;
+    const vis = []; for (const a of ACT) { if (a.x == null) continue; if (a.x + a.r < vx0 || a.x - a.r > vx1) continue; vis.push(a); }
+    vis.sort((a, b) => a.y - b.y);
+    renderLayer(ctx, 0, vx0, vx1, eff, g, s);
+    if (!RM) { waterShimmer(ctx, vx0, vx1); willowSway(ctx, 0, vx0, vx1, g); }
+    drawGroup(ctx, vis, 'boat');
+    renderLayer(ctx, 1, vx0, vx1, eff, g, s);
+    drawGroup(ctx, vis, 'fig');
+    renderLayer(ctx, 2, vx0, vx1, eff, g, s);
+    if (!RM) willowSway(ctx, 2, vx0, vx1, g);
+    evictTiles();
+  }
+  ctx.restore();
+  // 纸纹（正片叠底）
+  if (PAPERPAT) {
+    const k = .7; PAPERPAT.setTransform(new DOMMatrix([k, 0, 0, k, 0, 0]));
+    gco(ctx, 1); ctx.globalAlpha = 1; ctx.fillStyle = PAPERPAT; ctx.fillRect(Math.max(-150, vx0), -30, Math.min(W + 150, vx1) - Math.max(-150, vx0), H + 60); gco(ctx, 0);
+  }
+  ctx.restore();
+  if (mode === 'unroll' || mode === 'intro') {
+    // 卷轴本体
+    const rx = Math.min(reveal, W + 150);
+    const g = ctx.createLinearGradient(rx - 34, 0, rx + 34, 0);
+    g.addColorStop(0, '#cbb791'); g.addColorStop(.35, '#efe2c4'); g.addColorStop(.7, '#bfa982'); g.addColorStop(1, '#8b7656');
+    ctx.fillStyle = g; ctx.fillRect(rx - 4, -36, 60, H + 72);
+    ctx.fillStyle = '#4b5754'; ctx.fillRect(rx - 4, -36, 60, 14); ctx.fillRect(rx - 4, H + 22, 60, 14);
+    const g2 = ctx.createLinearGradient(rx + 44, 0, rx + 72, 0); g2.addColorStop(0, '#3b2a1c'); g2.addColorStop(.5, '#8f6a47'); g2.addColorStop(1, '#4a3424');
+    ctx.fillStyle = g2; ctx.fillRect(rx + 44, -56, 28, H + 112);
+    ctx.fillStyle = '#2a1e15'; ctx.fillRect(rx + 48, -76, 20, 22); ctx.fillRect(rx + 48, H + 54, 20, 22);
+  }
+}
+function drawGroup(c, vis, grp) {
+  for (const a of vis) {
+    if (a.grp !== grp) continue;
+    const al = figAlpha(a.x); if (al <= 0.01) continue;
+    c.globalAlpha = al; gco(c, 0);
+    try { a.draw(c, T, ST); } catch (e) { if (!a._err) { a._err = 1; console.error(e); } }
+  }
+  c.globalAlpha = 1;
+}
+function waterShimmer(c, vx0, vx1) {
+  if (vx1 < RIV0 || vx0 > RIV1) return;
+  c.lineCap = 'round';
+  for (let i = 0; i < 160; i++) {
+    const bx = RIV0 + 150 + ((i * 271.3) % (RIV1 - RIV0 - 200));
+    const x = bx + ((T * (5 + i % 4)) % 80) - 40;
+    if (x < vx0 || x > vx1) continue;
+    const cc = rivC(x), w = rivW(x); if (w < 30) continue;
+    const off = ((i * 0.618) % 1 - .5) * 1.6 * w; const y = cc + off; if (y > H - 4) continue;
+    if (x > BX0 && x < BX1 && y < 790) continue;
+    const life = Math.sin((T * .5 + i * .37) % Math.PI); const a = life * life;
+    const ang = Math.atan2(rivC(x + 6) - rivC(x - 6), 12), L = 6 + (i % 5) * 2;
+    c.globalAlpha = a * .6; c.strokeStyle = '#f5ecd8'; c.lineWidth = 1.1;
+    c.beginPath(); c.moveTo(x - Math.cos(ang) * L, y - Math.sin(ang) * L); c.lineTo(x + Math.cos(ang) * L, y + Math.sin(ang) * L); c.stroke();
+    if (i % 3 === 0) { c.globalAlpha = a * .25; c.strokeStyle = INK; c.lineWidth = .5; c.beginPath(); c.moveTo(x - L, y + 3); c.quadraticCurveTo(x, y + 1, x + L, y + 3); c.stroke(); }
+  }
+  c.globalAlpha = 1;
+}
+function willowSway(c, lay, vx0, vx1, g) {
+  c.lineCap = 'round';
+  for (const wl of WILLOWS) {
+    if (wl.lay !== lay || wl.x + wl.h < vx0 || wl.x - wl.h > vx1) continue;
+    const al = g >= 1e8 ? 1 : smooth((g - (wl.x / W * WAVE + STO[2] + 1)) / 1.5); if (al <= 0) continue;
+    for (let i = 0; i < wl.strands.length; i++) {
+      const st = wl.strands[i]; const sw = Math.sin(T * .9 + i * 1.7 + wl.x * .01) * wl.h * .025;
+      c.globalAlpha = .35 * al; c.strokeStyle = COL.greenD; c.lineWidth = 1.6;
+      c.beginPath(); c.moveTo(st[0], st[1]); c.quadraticCurveTo(st[0] + st[3] * 4 + sw * .4, st[1] + st[2] * .5, st[0] + sw + st[3] * 3, st[1] + st[2]); c.stroke();
+      c.globalAlpha = .55 * al; c.strokeStyle = INK; c.lineWidth = .45; c.stroke();
+    }
+  }
+  c.globalAlpha = 1;
+}
+
+/* —— 小地图 —— */
+const mini = $('mini'), mctx = mini.getContext('2d');
+let mW = 400, mH = 44;
+function sizeMini() {
+  mW = Math.min(520, vw - 48); mH = Math.max(30, Math.round(mW * H / W * 1.15));
+  mini.width = Math.round(mW * dpr); mini.height = Math.round(mH * dpr); mini.style.width = mW + 'px'; mini.style.height = mH + 'px';
+}
+function buildMini() {
+  const w = 1400, h = Math.round(w * H / W);
+  const m = document.createElement('canvas'); m.width = w; m.height = h;
+  const c = m.getContext('2d'); c.drawImage(AGING, 0, 0, w, h);
+  c.setTransform(w / W, 0, 0, h / H, 0, 0);
+  for (let l = 0; l < 3; l++) drawRange(c, l, -200, W + 200, 1e9);
+  MINI = m;
+}
+function drawMini() {
+  const c = mctx; c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, mW, mH);
+  const kx = mW / W, ky = mH / H;
+  c.fillStyle = '#d9c9a6'; c.fillRect(0, 0, mW, mH);
+  if (MINI) {
+    let rx = mW; if (growT >= 0 && growT < GROW_END) rx = clamp((growT / WAVE) * mW, 0, mW); if (growT < 0) rx = 0;
+    c.drawImage(MINI, 0, 0, MINI.width * rx / mW, MINI.height, 0, 0, rx, mH);
+  }
+  const s = s0 * cam.z, hw = vw / 2 / s, hh = vh / 2 / s;
+  c.strokeStyle = '#a6402b'; c.lineWidth = 1.5; c.strokeRect(clamp((cam.x - hw) * kx, 0, mW), clamp((cam.y - hh) * ky, 0, mH) + .75, clamp(hw * 2 * kx, 4, mW), clamp(hh * 2 * ky, 4, mH) - 1.5);
+  if (growT >= GROW_END || mode === 'tour' || mode === 'free' || mode === 'scene') {
+    c.fillStyle = '#b0472f'; c.beginPath(); c.arc(hero.x * kx, hero.y * ky, 3, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#fff6e4'; c.lineWidth = 1; c.stroke();
+  }
+}
+
+/* —— 导览镜头 —— */
+const CK = [[0, 1.8, 'h', .35], [6, 1.8, 'h', .35], [12, 1, 'h', .5], [28, 1, 'h', .5], [40, 1, 'h', .35], [47.5, 1.5, 'h', .1], [59, 1.5, 'h', .1], [64, 1.15, 'x', 2960], [70, 1.15, 'x', 3010], [76, 1, 'h', .4], [86, .95, 'h', .45], [91, 1.05, 'x', 4500], [101, 1.05, 'x', 4530], [106, .92, 'x', 4690], [115, .92, 'x', 4760], [121, 1, 'h', .4], [132, 1, 'h', .35], [138, 1.15, 'x', 6330], [145, 1.15, 'x', 6440], [151, 1, 'h', .35], [160, 1.6, 'x', 7468], [176, 1.6, 'x', 7468], [181, 1, 'h', .4], [192, 1.5, 'x', 8445], [207, 1.5, 'x', 8455], [214, 'full', 'x', W / 2]];
+function keyX(k, hw) {
+  if (k[2] === 'x') { if (hw < 430) return hero.x + hw * .25; return k[3]; }
+  return hero.x + hw * k[3];
+}
+function tourTarget() {
+  let i = 0; while (i < CK.length - 1 && CK[i + 1][0] <= ST) i++;
+  const a = CK[i], b = CK[Math.min(i + 1, CK.length - 1)];
+  const u = b === a ? 0 : ease((ST - a[0]) / (b[0] - a[0]));
+  const zf = zFull(), mob = vw < 700 ? .85 : 1;
+  const za = a[1] === 'full' ? zf : a[1] * mob, zb = b[1] === 'full' ? zf : b[1] * mob;
+  const z = Math.exp(lerp(Math.log(za), Math.log(zb), u));
+  const hw = vw / 2 / (s0 * z);
+  const x = lerp(a[1] === 'full' ? W / 2 : keyX(a, hw), b[1] === 'full' ? W / 2 : keyX(b, hw), u);
+  return { x, z, y: hero.y - 60 };
+}
+function approach(target, dt, kx, kz) {
+  cam.x += (target.x - cam.x) * (1 - Math.exp(-dt * kx));
+  const lz = Math.log(cam.z), tz = Math.log(target.z); cam.z = Math.exp(lz + (tz - lz) * (1 - Math.exp(-dt * kz)));
+  if (target.y != null) cam.y += (target.y - cam.y) * (1 - Math.exp(-dt * kx));
+}
+function startTween(to, dur) {
+  if (RM) dur = .01;
+  tween = { from: { x: cam.x, y: cam.y, z: cam.z }, to, t: 0, d: dur || 1.2 };
+}
+function stepTween(dt) {
+  if (!tween) return;
+  tween.t += dt; const u = ease(tween.t / tween.d);
+  cam.x = lerp(tween.from.x, tween.to.x, u); cam.y = lerp(tween.from.y, tween.to.y != null ? tween.to.y : tween.from.y, u);
+  cam.z = Math.exp(lerp(Math.log(tween.from.z), Math.log(tween.to.z), u));
+  if (tween.t >= tween.d) tween = null;
+}
+
+/* —— 字幕、气泡 —— */
+const CAPS = [
+  [0, '城郊清晨，一位送货人在检查车上的货。认准那块朱红包布。'],
+  [11, '长卷从疏处起笔：田路、柳树、驮货的驴，人和景都还稀疏。'],
+  [30, '河面渐渐宽了。看河流怎样把运输和生活连起来：船靠岸，货上肩，店铺开在水边。'],
+  [49, '他在码头停下问路。'],
+  [61, '一袋货从船上到岸上，要经过好几双手。'],
+  [80, '前面是虹桥，全卷的视觉中心。桥上汇集人流，桥下汇集船流。'],
+  [91, '他停下车，请挑担的人先过。'],
+  [97, '桥下，船工放倒桅杆，撑篙摇橹，让船慢慢穿过桥洞。'],
+  [104, '人群错身之后，他推车上桥。'],
+  [119, '过了桥，道路由宽变窄，房屋和行人渐渐密了。'],
+  [136, '穿过城门，进入街市。'],
+  [148, '茶肆、食铺、布店。喝茶、交谈、挑担、牵驴，每个人都在过自己的日子。'],
+  [162, '货送到了。店家查看，双方行礼。'],
+  [179, '回头看：长卷用疏密和道路组织画面，视点跟着行人一起移动。'],
+  [194, '送完货，他在茶肆外歇脚。'],
+  [207, '']
+];
+function captionAt(st) { let c = ''; for (const k of CAPS) if (st >= k[0]) c = k[1]; return c; }
+const SAY = [[51, 3, 'hero', '劳驾，进城往哪儿走？'], [54.3, 3.2, 'foreman', '过了虹桥一直走，进城门就是街市。'], [58, 2, 'hero', '多谢！'],
+[92, 2.6, 'hero', '您先请。'], [96.8, 2.4, 'yield0', '多谢让路！'], [166, 2.6, 'hero', '您要的货，送到了。'], [169.2, 3, 'keeper', '我看看……正好，辛苦了。'], [202, 2.8, 'tea', '客官，喝碗热茶。']];
+const byName = {}; function actor(n) { if (!byName[n]) byName[n] = ACT.find(a => a.name === n); return byName[n]; }
+const bubPool = [];
+function bubbles() {
+  const list = [];
+  if (mode === 'tour' || mode === 'free' || mode === 'scene') {
+    for (const s of SAY) if (ST >= s[0] && ST < s[0] + s[1]) { const a = actor(s[2]); if (a && a.head) list.push([s[3], a.head]); }
+    const B = BOATB;
+    if (B.state === 'pass' && B.mastA > .05 && B.mastA < .9 && B.x < 4500 && BCREW[1].head) list.push(['落桅——慢些！', BCREW[1].head]);
+    if (B.state === 'pass' && B.x > 4480 && B.x < 4680 && BCREW[0].head) list.push(['船头撑住，靠左！', BCREW[0].head]);
+    const rt = RELAY.t != null ? T - RELAY.t : null; const rl = actor('relay');
+    if (rt != null && rl && rl.heads) { if (rt > .2 && rt < 2.2) list.push(['起——', rl.heads[0]]); if (rt > 2.4 && rt < 4.4) list.push(['接住了！', rl.heads[2]]); }
+    const tt = TEAH.t != null ? T - TEAH.t : null; const te = actor('tea');
+    if (tt != null && te) {
+      if (tt > .8 && tt < 3.4 && te.svHead) list.push(['热茶来了，慢用。', te.svHead]);
+      if (tt > 3.8 && tt < 6.3 && te.c1Head) list.push(['今天河上的船真多。', te.c1Head]);
+      if (tt > 6.5 && tt < 9.2) { const h = ST >= 186 ? (ST >= 200 ? hero.head : null) : te.c2Head; if (h) list.push(['桥上也挤，歇一歇再走。', h]); }
+    }
+    const vt = VEND.t != null ? T - VEND.t : null;
+    if (vt != null) { const v = actor('vendor'), cu = actor('vcust'); if (vt > .4 && vt < 2.9 && v.head) list.push(['刚出炉的胡饼，热乎的！', v.head]); if (vt > 3 && vt < 5.2 && cu.head) list.push(['来两个。', cu.head]); }
+  }
+  const s = s0 * cam.z;
+  while (bubPool.length < list.length) { const d = document.createElement('div'); d.className = 'bub'; $('bubbles').appendChild(d); bubPool.push(d); }
+  bubPool.forEach((d, i) => {
+    const it = list[i];
+    if (!it) { d.style.display = 'none'; return; }
+    const sx = (it[1][0] - cam.x) * s + vw / 2, sy = (it[1][1] - cam.y) * s + vh / 2 - 10 * Math.max(.6, cam.z * .6);
+    if (sx < -100 || sx > vw + 100 || sy < 0 || sy > vh) { d.style.display = 'none'; return; }
+    d.style.display = 'block'; if (d.textContent !== it[0]) d.textContent = it[0];
+    d.style.transform = `translate(${sx | 0}px, ${sy | 0}px) translate(-50%, -100%)`;
+  });
+}
+
+/* —— 热点 —— */
+const HOTS = [
+  { id: 'dock', x: 2985, y: 610, label: '码头搬货', title: '码头搬货', text: '一袋货从船舱到岸上：船上的人抬起，跳板上的人接过，岸上的人扛去货堆。', z: 2.3, cx: 2995, cy: 640, act: () => relayStart(T), again: () => { RELAY.t = null; relayStart(T); } },
+  { id: 'boat', x: 4600, y: 640, label: '桥下行船', title: '桥下行船', text: '桅杆比桥洞高。船工先放倒桅杆，船头有人撑篙护住船身，船尾摇橹，一起把船送过桥洞。', z: 1.05, cx: 4520, cy: 680, follow: true, act: () => boatBStart(T), again: () => { BOATB.state = 'moored'; BOATB.alpha = 1; BOATB.s = 0; BOATB.pending = T + .8; } },
+  { id: 'tea', x: 8468, y: 700, label: '茶肆歇脚', title: '茶肆歇脚', text: '茶博士提壶斟茶，客人举杯说几句闲话。歇脚的人在这里把一天的路放下。', z: 2.6, cx: 8470, cy: 718, act: () => { TEAH.t = T; }, again: () => { TEAH.t = T; } },
+  { id: 'vendor', x: 7100, y: 690, label: '街头叫卖', title: '街头叫卖', text: '摊主举起刚出炉的饼招呼，路过的人停下来看一眼，买了两个。', z: 2.6, cx: 7108, cy: 705, act: () => { VEND.t = T; }, again: () => { VEND.t = T; } },
+  { id: 'house', x: 7745, y: 545, label: '建筑细看', modal: true }
+];
+const hotEls = HOTS.map(h => {
+  const b = document.createElement('button'); b.className = 'hs'; b.setAttribute('aria-label', '探索：' + h.label);
+  b.innerHTML = '<span class="ring"></span><span class="lab">' + h.label + '</span>';
+  b.addEventListener('click', e => { e.stopPropagation(); openHot(h); });
+  $('hots').appendChild(b); return b;
+});
+function placeHots() {
+  const s = s0 * cam.z, on = (mode === 'tour' || mode === 'free') && growT >= GROW_END;
+  HOTS.forEach((h, i) => {
+    const el = hotEls[i];
+    if (!on) { el.style.display = 'none'; return; }
+    const sx = (h.x - cam.x) * s + vw / 2, sy = (h.y - cam.y) * s + vh / 2;
+    const show = sx > 10 && sx < vw - 10 && sy > 60 && sy < vh - 130 && (hintMode === 'show' || cam.z > .7);
+    el.style.display = show ? 'flex' : 'none';
+    if (show) el.style.transform = `translate(${sx - 13 | 0}px, ${sy - 13 | 0}px)`;
+  });
+}
+function openHot(h) {
+  if (h.modal) { openDetail(); return; }
+  if (mode === 'scene') closeScene(true);
+  savedCam = { x: cam.x, y: cam.y, z: cam.z }; prevMode = mode; sceneHot = h; mode = 'scene';
+  const z = h.z * (vw < 700 ? .85 : 1);
+  startTween({ x: h.cx, y: h.cy, z }, 1.3);
+  setTimeout(() => { if (sceneHot === h) h.act(); }, RM ? 50 : 700);
+  $('scTitle').textContent = h.title; $('scText').textContent = h.text; $('sceneCard').hidden = false;
+  setCaption(''); showBar(true);
+  $('scClose').focus({ preventScroll: true });
+}
+function closeScene(silent) {
+  if (mode !== 'scene') return;
+  $('sceneCard').hidden = true; mode = prevMode; sceneHot = null;
+  if (savedCam && !silent) startTween(savedCam, 1.2);
+  if (mode === 'tour') storyOn = true;
+}
+$('scClose').onclick = () => closeScene();
+$('scAgain').onclick = () => { if (sceneHot && sceneHot.again) sceneHot.again(); };
+
+/* —— 建筑细看 —— */
+const dcv = $('dcv'), dctx = dcv.getContext('2d');
+function openDetail() {
+  if (!DET.length) DET_END = buildDetail();
+  $('detail').hidden = false; detOn = true; detT = RM ? DET_END : 0; prevPaused = paused;
+  $('dClose').focus({ preventScroll: true });
+}
+let prevPaused = false;
+function closeDetail() { $('detail').hidden = true; detOn = false; }
+$('dClose').onclick = closeDetail; $('dAgain').onclick = () => { detT = 0; };
+$('detail').addEventListener('click', e => { if (e.target === $('detail')) closeDetail(); });
+function stepDetail(dt) {
+  if (!detOn) return;
+  detT += dt; drawDetail(dctx, dcv.width, dcv.height, detT);
+  const k = clamp(Math.floor(detT / DSTEP), 0, 4);
+  [...$('dsteps').children].forEach((li, i) => { li.className = i === k ? 'on' : (i < k ? 'done' : ''); });
+  const note = DNOTES[k]; if ($('dnote').textContent !== note) $('dnote').textContent = note;
+}
+
+/* —— 声音（WebAudio 合成，无外部素材） —— */
+const AU = { c: null, vol: .7, muted: false };
+function audioInit() {
+  if (AU.c) { AU.c.resume && AU.c.resume(); return; }
+  try {
+    const C = new (window.AudioContext || window.webkitAudioContext)(); AU.c = C;
+    AU.master = C.createGain(); AU.master.gain.value = AU.vol; AU.master.connect(C.destination);
+    const len = C.sampleRate * 3, buf = C.createBuffer(1, len, C.sampleRate), d = buf.getChannelData(0);
+    let b = 0; for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; b = .97 * b + .03 * w; d[i] = w * .5 + b * 2; }
+    AU.noise = buf;
+    const loop = (type, f, q) => { const src = C.createBufferSource(); src.buffer = buf; src.loop = true; const fl = C.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q; const g = C.createGain(); g.gain.value = 0; src.connect(fl); fl.connect(g); g.connect(AU.master); src.start(0, Math.random() * 2); return { g, fl }; };
+    AU.water = loop('lowpass', 520, .7); AU.wind = loop('lowpass', 260, .5); AU.crowd = loop('bandpass', 760, .8); AU.crowd2 = loop('bandpass', 1300, 1.2);
+  } catch (e) { AU.c = null; }
+}
+function burst(f, q, dur, gain, type) {
+  const C = AU.c; if (!C || AU.muted) return;
+  const src = C.createBufferSource(); src.buffer = AU.noise; const fl = C.createBiquadFilter(); fl.type = type || 'bandpass'; fl.frequency.value = f; fl.Q.value = q;
+  const g = C.createGain(); const t = C.currentTime; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain, t + .006); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  src.connect(fl); fl.connect(g); g.connect(AU.master); src.start(t, Math.random() * 2, dur + .05);
+}
+function tone(f0, f1, dur, gain, type) {
+  const C = AU.c; if (!C || AU.muted) return;
+  const o = C.createOscillator(); o.type = type || 'sine'; const g = C.createGain(); const t = C.currentTime;
+  o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g); g.connect(AU.master); o.start(t); o.stop(t + dur + .05);
+}
+const bell = (x, a, b, fade) => clamp(Math.min((x - a) / fade + 1, (b - x) / fade + 1), 0, 1);
+let lastStep = 0, lastSpoke = 0;
+function audioUpdate(dt) {
+  if (!AU.c || paused || AU.muted) { if (AU.c && AU.master) AU.master.gain.setTargetAtTime(AU.muted || paused ? 0 : AU.vol, AU.c.currentTime, .3); return; }
+  const C = AU.c, t = C.currentTime, x = cam.x, live = growT >= 0;
+  AU.master.gain.setTargetAtTime(AU.vol, t, .3);
+  const zoomed = clamp(cam.z, .4, 1.6);
+  const wW = live ? bell(x, 1700, 5400, 700) : 0, wS = live ? bell(x, -400, 1800, 700) * .9 + bell(x, 8300, 9600, 500) * .5 : 0;
+  const wM = live ? bell(x, 5700, 8400, 600) : 0, wB = live ? bell(x, 4000, 5300, 500) * .6 : 0, wD = live ? bell(x, 1900, 3950, 500) : 0;
+  AU.water.g.gain.setTargetAtTime(.14 * wW * zoomed, t, .9);
+  AU.wind.g.gain.setTargetAtTime(.08 * wS, t, .9);
+  AU.crowd.g.gain.setTargetAtTime((.07 * wM + .045 * wB + .025 * wD) * (.7 + .3 * Math.sin(T * 1.7) * Math.sin(T * .63)), t, .25);
+  AU.crowd2.g.gain.setTargetAtTime((.03 * wM) * (.5 + .5 * Math.sin(T * 2.3 + 1)), t, .25);
+  if (Math.random() < dt * 1.2 * wS) { const f = 2600 + Math.random() * 1200; const n = 2 + (Math.random() * 3 | 0); for (let i = 0; i < n; i++) setTimeout(() => tone(f, f * 1.25, .09, .035), i * 110); }
+  if (Math.random() < dt * .9 * wD) burst(180 + Math.random() * 80, 5, .14, .12);
+  if (Math.random() < dt * .5 * wD) burst(420, 9, .3, .03);
+  if (Math.random() < dt * .45 * (wM + bell(x, 8200, 9000, 300))) tone(2200 + Math.random() * 500, 2150, .35, .02);
+  // 送货人的脚步与车轮
+  const H_ = hero.H;
+  if (H_ && H_.walk && (mode === 'tour' || mode === 'free' || mode === 'scene')) {
+    const s = s0 * cam.z, sx = (hero.x - cam.x) * s + vw / 2;
+    if (sx > -100 && sx < vw + 100) {
+      const near = clamp(cam.z, .5, 1.8) * .7;
+      const step = Math.floor(H_.ph / Math.PI); if (step !== lastStep) { lastStep = step; burst(230, 1.2, .07, .09 * near, 'lowpass'); }
+      if (H_.attached) { const sp = Math.floor((H_.s || 0) / 7.5 / (Math.PI / 3)); if (sp !== lastSpoke) { lastSpoke = sp; if (sp % 2 === 0) burst(1100 + Math.random() * 300, 6, .05, .035 * near); } }
+    }
+  }
+}
+
+/* —— 界面 —— */
+let barTimer = 0;
+function showBar(force) { document.body.classList.remove('barHidden'); barTimer = force ? 1e9 : 0; }
+function setCaption(t) { const el = $('caption'); if (!t) { el.classList.remove('on'); return; } if (el.dataset.t !== t) { el.dataset.t = t; el.classList.remove('on'); setTimeout(() => { el.textContent = t; el.classList.add('on'); }, 260); } else el.classList.add('on'); }
+function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => el.classList.remove('on'), 2200); }
+function setMode(m) {
+  if (m === 'tour') { mode = 'tour'; storyOn = true; tween = null; $('endCard').hidden = ST < TOUR_END; }
+  else { mode = 'free'; storyOn = true; if (isTouch) { const sh = $('swipeHint'); sh.hidden = false; setTimeout(() => sh.hidden = true, 2600); } setCaption(''); }
+  $('mTour').setAttribute('aria-pressed', mode === 'tour'); $('mFree').setAttribute('aria-pressed', mode === 'free');
+  showBar();
+}
+function region(x) { return x < 1750 ? '城郊启程' : x < 3950 ? '汴河码头' : x < 5450 ? '虹桥相遇' : x < 8180 ? '城门与街市' : '歇脚与收卷'; }
+function setPaused(p) {
+  paused = p; $('bPlay').setAttribute('aria-label', p ? '继续' : '暂停'); $('bPlay').querySelector('.tx').textContent = p ? '继续' : '暂停';
+  $('playIcon').setAttribute('d', p ? 'M5 3l8 5-8 5z' : 'M5 3v10M11 3v10');
+}
+function replay() {
+  ST = 0; endShown = false; $('endCard').hidden = true; RELAY.t = null; TEAH.t = null; VEND.t = null;
+  BOATB.state = 'moored'; BOATB.s = 0; BOATB.alpha = 1; BOATB.pending = 0;
+  if (mode === 'scene') { $('sceneCard').hidden = true; sceneHot = null; }
+  setPaused(false); setMode('tour'); storyFlags.clear();
+}
+function regrow() {
+  $('endCard').hidden = true; $('choice').hidden = true; clearTiles(); growT = 0; mode = 'grow'; ST = 0; storyOn = false;
+  cam.z = growZoom(); cam.x = growCamX(); cam.y = H / 2; $('growUI').hidden = false; setCaption(''); document.body.classList.add('barHidden');
+  storyFlags.clear(); setPaused(false); overviewDone = false;
+}
+function growZoom() { const z = Math.max(1, 1500 / (vw / s0)); return vw / s0 < 1500 ? Math.min(z, 1) * Math.max(.55, (vw / s0) / 1500) : 1; }
+function growCamX() { const hw = vw / 2 / (s0 * cam.z); return Math.max(-150 + hw, (growT - 3.2) / WAVE * W); }
+function finishGrowth(instant) {
+  growT = GROW_END + 2; $('growUI').hidden = true;
+  if (instant) { cam.z = zFull(); cam.x = W / 2; cam.y = H / 2; mode = 'overview'; overviewT = 3; }
+  else { mode = 'overview'; overviewT = 0; startTween({ x: W / 2, y: H / 2, z: zFull() }, 3); }
+}
+
+$('startGrow').onclick = () => begin(false);
+$('startFull').onclick = () => begin(true);
+function begin(full) {
+  audioInit();
+  $('intro').classList.add('out'); setTimeout(() => $('intro').hidden = true, 1000);
+  if (full) { growT = GROW_END + 2; mode = 'unroll'; unrollT = 0; cam.z = zFull(); cam.x = W / 2; full_ = true; }
+  else { mode = 'unroll'; unrollT = 0; cam.z = growZoom(); cam.x = -150 + vw / 2 / (s0 * cam.z); full_ = false; }
+  cam.y = H / 2;
+}
+let full_ = false;
+$('skipGrow').onclick = () => finishGrowth(true);
+$('cTour').onclick = () => { $('choice').hidden = true; ST = 0; setMode('tour'); };
+$('cFree').onclick = () => { $('choice').hidden = true; ST = 0; setMode('free'); startTween({ x: hero.x + 300, y: H / 2, z: 1 }, 1.6); };
+$('mTour').onclick = () => { if (growT < GROW_END) return; if (mode === 'scene') closeScene(true); $('choice').hidden = true; setMode('tour'); };
+$('mFree').onclick = () => { if (growT < GROW_END) return; if (mode === 'scene') closeScene(true); $('choice').hidden = true; setMode('free'); };
+$('eFree').onclick = () => { $('endCard').hidden = true; setMode('free'); };
+$('eReplay').onclick = () => replay();
+$('eGrow').onclick = () => regrow();
+$('bPlay').onclick = () => setPaused(!paused);
+$('bReplay').onclick = () => { if (growT < GROW_END) return; replay(); };
+const zoomBy = (k, sx, sy) => {
+  if (mode === 'tour') setMode('free');
+  if (mode === 'scene') return;
+  sx = sx == null ? vw / 2 : sx; sy = sy == null ? vh / 2 : sy;
+  const s = s0 * cam.z, wx = cam.x + (sx - vw / 2) / s, wy = cam.y + (sy - vh / 2) / s;
+  cam.z = clamp(cam.z * k, zFull(), 6); const s2 = s0 * cam.z;
+  cam.x = wx - (sx - vw / 2) / s2; cam.y = wy - (sy - vh / 2) / s2; clampCam(cam); tween = null;
+};
+$('bIn').onclick = () => { const z0 = cam.z; startTween({ x: cam.x, y: cam.y, z: clamp(z0 * 1.5, zFull(), 6) }, .45); if (mode === 'tour') setMode('free'); };
+$('bOut').onclick = () => { const z0 = cam.z; startTween({ x: cam.x, y: cam.y, z: clamp(z0 / 1.5, zFull(), 6) }, .45); if (mode === 'tour') setMode('free'); };
+$('bFull').onclick = () => { if (growT < GROW_END) return; if (mode === 'scene') closeScene(true); if (mode === 'tour') setMode('free'); startTween({ x: W / 2, y: H / 2, z: zFull() }, 1.4); };
+$('bHero').onclick = () => { if (growT < GROW_END) return; if (mode === 'scene') closeScene(true); if (mode === 'tour') setMode('free'); startTween({ x: hero.x + 60, y: hero.y - 40, z: 1.5 }, 1.4); };
+$('bHint').onclick = () => {
+  hintMode = hintMode === 'soft' ? 'show' : hintMode === 'show' ? 'off' : 'soft';
+  document.body.classList.toggle('hintSoft', hintMode === 'soft'); document.body.classList.toggle('hintShow', hintMode === 'show'); document.body.classList.toggle('hintOff', hintMode === 'off');
+  $('bHint').setAttribute('aria-pressed', hintMode === 'show');
+  $('bHint').querySelector('.tx').textContent = hintMode === 'show' ? '隐藏提示' : hintMode === 'off' ? '提示已关' : '可探索处';
+  toast(hintMode === 'show' ? '已标出五处可探索的小故事' : hintMode === 'off' ? '提示已关闭，点画面上的人物仍可进入' : '提示恢复为柔和显示');
+};
+$('bSound').onclick = () => { audioInit(); AU.muted = !AU.muted; $('bSound').setAttribute('aria-pressed', AU.muted); $('bSound').setAttribute('aria-label', AU.muted ? '取消静音' : '静音'); $('sndWave').style.display = AU.muted ? 'none' : ''; };
+$('vol').oninput = e => { audioInit(); AU.vol = e.target.value / 100; if (AU.muted && AU.vol > 0) $('bSound').click(); };
+$('bMotion').onclick = () => { RM = !RM; $('bMotion').setAttribute('aria-pressed', RM); toast(RM ? '已减少动态：水纹柳丝静止，镜头直接切换' : '动态效果已恢复'); };
+$('infoBtn').onclick = () => { $('info').hidden = false; $('infoClose').focus(); };
+$('infoClose').onclick = () => { $('info').hidden = true; };
+
+/* —— 指针与键盘 —— */
+const pts = new Map(); let drag = null, pinch = null, vel = { x: 0, y: 0 }, lastMove = 0;
+cv.addEventListener('pointerdown', e => {
+  cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  showBar();
+  if (pts.size === 1) { drag = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: false, t: performance.now() }; vel = { x: 0, y: 0 }; }
+  if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: cam.z, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 }; drag = null; }
+});
+cv.addEventListener('pointermove', e => {
+  if (!pts.has(e.pointerId)) { if (e.pointerType === 'mouse') showBar(); return; }
+  const prev = pts.get(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pinch && pts.size >= 2) {
+    const [a, b] = [...pts.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y);
+    if (mode === 'tour') setMode('free'); if (mode !== 'free') return;
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    zoomBy((pinch.z * d / pinch.d) / cam.z, mx, my);
+    const s = s0 * cam.z; cam.x -= (mx - pinch.mx) / s; cam.y -= (my - pinch.my) / s; pinch.mx = mx; pinch.my = my; clampCam(cam);
+    return;
+  }
+  if (drag) {
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!drag.moved && Math.hypot(dx, dy) > 6) { drag.moved = true; cv.classList.add('dragging'); if (mode === 'tour') { setMode('free'); toast('已切换到自由游卷'); } }
+    if (drag.moved && (mode === 'free' || mode === 'overview')) {
+      if (mode === 'overview') return;
+      const s = s0 * cam.z; tween = null;
+      cam.x = drag.cx - dx / s; cam.y = drag.cy - dy / s; clampCam(cam);
+      const now = performance.now(), dtm = Math.max(1, now - lastMove); lastMove = now;
+      vel.x = .8 * vel.x + .2 * (-(e.clientX - prev.x) / s) / (dtm / 1000); vel.y = .8 * vel.y + .2 * (-(e.clientY - prev.y) / s) / (dtm / 1000);
+    }
+  }
+});
+function endPtr(e) {
+  if (!pts.has(e.pointerId)) return;
+  pts.delete(e.pointerId); cv.classList.remove('dragging');
+  if (pinch && pts.size < 2) { pinch = null; drag = null; return; }
+  if (drag && !drag.moved && performance.now() - drag.t < 500) clickAt(e.clientX, e.clientY);
+  if (drag && drag.moved && performance.now() - lastMove > 80) vel = { x: 0, y: 0 };
+  drag = null;
+}
+cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', endPtr);
+function clickAt(sx, sy) {
+  if (growT < GROW_END || !(mode === 'tour' || mode === 'free')) return;
+  const s = s0 * cam.z, wx = cam.x + (sx - vw / 2) / s, wy = cam.y + (sy - vh / 2) / s;
+  let best = null, bd = 1e9;
+  for (const h of HOTS) { const d = Math.hypot(h.x - wx, (h.y + 40) - wy); const lim = Math.max(70, 26 / s); if (d < lim && d < bd) { bd = d; best = h; } }
+  if (best) openHot(best);
+}
+cv.addEventListener('wheel', e => {
+  e.preventDefault(); if (!(mode === 'free' || mode === 'tour')) return;
+  if (e.ctrlKey || e.metaKey) { zoomBy(Math.exp(-e.deltaY * .01), e.clientX, e.clientY); return; }
+  if (mode === 'tour') { setMode('free'); toast('已切换到自由游卷'); }
+  const s = s0 * cam.z; tween = null;
+  const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+  if (e.shiftKey || Math.abs(e.deltaX) > 0 || cam.z <= 1.02) cam.x += d / s; else cam.y += e.deltaY / s;
+  clampCam(cam);
+}, { passive: false });
+const mini_ = $('mini'); let miniDrag = false;
+const miniGo = e => { const r = mini_.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width * W; if (mode === 'tour') setMode('free'); if (mode !== 'free') return; tween = null; cam.x = x; clampCam(cam); };
+mini_.addEventListener('pointerdown', e => { if (growT < GROW_END || mode === 'scene' || mode === 'overview') return; miniDrag = true; mini_.setPointerCapture(e.pointerId); miniGo(e); });
+mini_.addEventListener('pointermove', e => { if (miniDrag) miniGo(e); });
+mini_.addEventListener('pointerup', () => miniDrag = false);
+window.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'Escape') { if (detOn) closeDetail(); else if (!$('info').hidden) $('info').hidden = true; else if (mode === 'scene') closeScene(); return; }
+  if (growT < GROW_END || detOn) return;
+  const s = s0 * cam.z;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { if (mode === 'tour') setMode('free'); if (mode !== 'free') return; startTween({ x: cam.x + (e.key === 'ArrowRight' ? 1 : -1) * vw * .35 / s, y: cam.y, z: cam.z }, .5); }
+  else if (e.key === '+' || e.key === '=') $('bIn').click();
+  else if (e.key === '-' || e.key === '_') $('bOut').click();
+  else if (e.key === ' ' && e.target === document.body) { e.preventDefault(); $('bPlay').click(); }
+  else if (e.key === 'f' || e.key === 'F') $('bFull').click();
+  else if (e.key === 'h' || e.key === 'H') $('bHero').click();
+});
+window.addEventListener('mousemove', () => showBar());
+window.addEventListener('resize', () => { resize(); });
+document.addEventListener('visibilitychange', () => { if (AU.c) { if (document.hidden) AU.c.suspend(); else AU.c.resume(); } });
+
+/* —— 故事触发 —— */
+const storyFlags = new Set();
+function storyTriggers() {
+  const once = (k, t, fn) => { if (ST >= t && !storyFlags.has(k)) { storyFlags.add(k); if (ST < t + 3) fn(); } };
+  once('relay', 61.5, () => relayStart(T));
+  once('boat', 92, () => { if (BOATB.state !== 'pass') { BOATB.state = 'moored'; BOATB.alpha = 1; BOATB.s = 0; BOATB.pending = 0; boatBStart(T); } });
+  once('vend', 152, () => { VEND.t = T; });
+}
+
+/* —— 主循环 —— */
+function frame(now) {
+  const dt = Math.min(.05, (now - (lastFrame || now)) / 1000); lastFrame = now;
+  if (!paused && !detOn) {
+    T += dt;
+    if (mode === 'unroll') { unrollT += dt; if (unrollT >= 2.6) { if (full_) { finishGrowth(true); } else { mode = 'grow'; growT = 0; $('growUI').hidden = false; document.body.classList.add('barHidden'); } } }
+    else if (mode === 'grow') { growT += dt; if (growT >= GROW_END) finishGrowth(false); }
+    if (storyOn && (mode === 'tour' || mode === 'free')) { ST += dt; storyTriggers(); }
+  }
+  // 相机
+  if (mode === 'grow') { const tx = growCamX(); cam.x += (tx - cam.x) * (1 - Math.exp(-dt * 3)); cam.y = H / 2; }
+  else if (mode === 'overview') { stepTween(dt); overviewT += dt; if (overviewT > 3.4 && $('choice').hidden && !overviewDone) { overviewDone = true; $('choice').hidden = false; $('cTour').focus({ preventScroll: true }); showBar(); } }
+  else if (mode === 'tour') {
+    if (tween) stepTween(dt); else if (!paused) { const t = tourTarget(); approach(t, dt, RM ? 6 : 1.9, RM ? 6 : 1.5); }
+    if (ST >= TOUR_END - 1 && !endShown) { endShown = true; $('endCard').hidden = false; }
+  } else if (mode === 'free') {
+    if (tween) stepTween(dt);
+    else if (!drag && (Math.abs(vel.x) > 2 || Math.abs(vel.y) > 2)) { cam.x += vel.x * dt; cam.y += vel.y * dt; const k = Math.exp(-dt * 4); vel.x *= k; vel.y *= k; }
+  } else if (mode === 'scene') {
+    if (tween) stepTween(dt);
+    else if (sceneHot && sceneHot.follow && BOATB.state === 'pass') { approach({ x: clamp(BOATB.x + 80, 4300, 5200), z: cam.z, y: clamp(BOATB.y - 40, 520, 760) }, dt, 1.4, 1); }
+  }
+  clampCam(cam);
+  // 演员
+  for (const a of ACT) if (a.update) a.update(T, ST, dt);
+  render();
+  drawMini();
+  placeHots();
+  bubbles();
+  stepDetail(dt);
+  // 字幕与界面
+  if (mode === 'tour' && !paused) setCaption(captionAt(ST)); else if (mode !== 'tour') setCaption('');
+  const rg = (mode === 'free' || mode === 'tour' || mode === 'scene') && cam.z > zFull() * 1.6 ? region(cam.x) : '';
+  if ($('region').textContent !== rg) $('region').textContent = rg;
+  if (mode === 'grow') {
+    const tc = cam.x / W * WAVE, d = growT - tc; const k = d < STO[1] ? 0 : d < STO[2] ? 1 : d < STO[3] ? 2 : d < FIGOFF ? 3 : 4;
+    document.querySelectorAll('#growUI .st').forEach((el, i) => el.className = 'st' + (i === k ? ' on' : i < k ? ' done' : ''));
+  }
+  if (mode === 'tour' && !drag) { barTimer += dt; if (barTimer > 3.5 && !paused) document.body.classList.add('barHidden'); }
+  audioUpdate(dt);
+  requestAnimationFrame(frame);
+}
+let overviewDone = false;
+
+/* —— 启动 —— */
+function boot() {
+  buildScene();
+  GROW_END = finalize(PR, mainTime) + .2;
+  const figEnd = WAVE + FIGOFF + 1.4; GROW_END = Math.max(GROW_END, figEnd);
+  buildIndex();
+  buildActors();
+  makePaper();
+  resize();
+  cam.x = -150 + vw / 2 / (s0 * cam.z);
+  document.body.classList.add('hintSoft');
+  if (RM) $('bMotion').setAttribute('aria-pressed', 'true');
+  requestAnimationFrame(frame);
+  const fontsReady = (document.fonts && document.fonts.load) ? Promise.race([Promise.all([document.fonts.load('40px "Ma Shan Zheng"', '汴京一日卷展开满城烟火'), document.fonts.load('14px "Noto Serif SC"', '受张择端清明上河图启发的数字创作人物故事为艺术虚构茶饼布酒')]), new Promise(r => setTimeout(r, 3000))]) : Promise.resolve();
+  fontsReady.then(() => { clearTiles(); setTimeout(buildMini, 60); }).catch(() => setTimeout(buildMini, 60));
+}
+boot();
+
+</script>

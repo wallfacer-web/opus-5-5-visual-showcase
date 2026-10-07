@@ -1,0 +1,188 @@
+{
+  "title": "Opus 5.5 视觉展示",
+  "categories": 6,
+  "works": 17,
+  "asset_files": 20,
+  "files": [
+    {
+      "category": "01-ink-and-poetry",
+      "original_filename": "水墨小品.html",
+      "path": "01-ink-and-poetry/水墨小品.html",
+      "bytes": 26802,
+      "original_sha256": "7fbca28e7c8a0c2bd4c032e90c1244bbfb1291cc1c94aaa5b797134fbb8542de",
+      "sha256": "7fbca28e7c8a0c2bd4c032e90c1244bbfb1291cc1c94aaa5b797134fbb8542de",
+      "modification": null
+    },
+    {
+      "category": "01-ink-and-poetry",
+      "original_filename": "千里江山·活卷.html",
+      "path": "01-ink-and-poetry/千里江山·活卷.html",
+      "bytes": 103100,
+      "original_sha256": "e86da6631db7bd39c67dc39d195067ab3001d544dcee3ed81cbf25b42bf4aecb",
+      "sha256": "e86da6631db7bd39c67dc39d195067ab3001d544dcee3ed81cbf25b42bf4aecb",
+      "modification": null
+    },
+    {
+      "category": "01-ink-and-poetry",
+      "original_filename": "汴京一日.html",
+      "path": "01-ink-and-poetry/汴京一日.html",
+      "bytes": 185631,
+      "original_sha256": "cca6cad0264364eb214ccdc2106775ce5b12c43c20791b246ad61dcc4668b6bc",
+      "sha256": "b4e93e234e12cb7745c5cb7316c7bbd54b2f3b93ee41e103ea41f52e3682d920",
+      "modification": "仅在文件开头补充 UTF-8 字符集声明，避免中文乱码。"
+    },
+    {
+      "category": "01-ink-and-poetry",
+      "original_filename": "春江花月夜.html",
+      "path": "01-ink-and-poetry/春江花月夜.html",
+      "bytes": 29678,
+      "original_sha256": "5987aec4e9390991b356f4a752c6211ed4d57a731add02b7442e5d070a70f0bb",
+      "sha256": "5987aec4e9390991b356f4a752c6211ed4d57a731add02b7442e5d070a70f0bb",
+      "modification": null
+    },
+    {
+      "category": "01-ink-and-poetry",
+      "original_filename": "春江花月夜_720p.mp4",
+      "path": "01-ink-and-poetry/春江花月夜_720p.mp4",
+      "bytes": 27933066,
+      "original_sha256": "1f2ab15ed8ce6e23ac4755c19fa654e38d452ad3e9e87c8f416fd6d236f49799",
+      "sha256": "1f2ab15ed8ce6e23ac4755c19fa654e38d452ad3e9e87c8f416fd6d236f49799",
+      "modification": null
+    },
+    {
+      "category": "01-ink-and-poetry",
+      "original_filename": "所剩沾衣_2.html",
+      "path": "01-ink-and-poetry/所剩沾衣_2.html",
+      "bytes": 9123430,
+      "original_sha256": "f042c3f507c165d97c87b20fd8382e4facc1b6bebe32b529625df8d2daa6c2ba",
+      "sha256": "f042c3f507c165d97c87b20fd8382e4facc1b6bebe32b529625df8d2daa6c2ba",
+      "modification": null
+    },
+    {
+      "category": "02-shadow-theatre",
+      "original_filename": "武松打虎.html",
+      "path": "02-shadow-theatre/武松打虎.html",
+      "bytes": 106432,
+      "original_sha256": "0b55ebf2276f7043a3cb991200199752fae0f15c5747112f8ec0b656193623d9",
+      "sha256": "0b55ebf2276f7043a3cb991200199752fae0f15c5747112f8ec0b656193623d9",
+      "modification": null
+    },
+    {
+      "category": "02-shadow-theatre",
+      "original_filename": "孙悟空借芭蕉扇.html",
+      "path": "02-shadow-theatre/孙悟空借芭蕉扇.html",
+      "bytes": 97816,
+      "original_sha256": "fc1fd5fdf10b40452ad9628f22b499f6c5dbeadc1597b17e13237be49636d4b6",
+      "sha256": "fc1fd5fdf10b40452ad9628f22b499f6c5dbeadc1597b17e13237be49636d4b6",
+      "modification": null
+    },
+    {
+      "category": "03-3d-scenes-and-games",
+      "original_filename": "五色博物馆.html",
+      "path": "03-3d-scenes-and-games/五色博物馆.html",
+      "bytes": 925108,
+      "original_sha256": "42dc2e28fffba1ea192f2727789d6339cbc015f97bd663b6db80a477d6a9d126",
+      "sha256": "42dc2e28fffba1ea192f2727789d6339cbc015f97bd663b6db80a477d6a9d126",
+      "modification": null
+    },
+    {
+      "category": "03-3d-scenes-and-games",
+      "original_filename": "鹈鹕骑行_越秀公园_电脑版_1.html",
+      "path": "03-3d-scenes-and-games/鹈鹕骑行_越秀公园_电脑版_1.html",
+      "bytes": 766819,
+      "original_sha256": "7e0f3536f12948c19e9b8589ae5f0b9b81bacfc79ac5ce665a7055101996c572",
+      "sha256": "7e0f3536f12948c19e9b8589ae5f0b9b81bacfc79ac5ce665a7055101996c572",
+      "modification": null
+    },
+    {
+      "category": "03-3d-scenes-and-games",
+      "original_filename": "鹈鹕骑行_越秀公园_手机版.html",
+      "path": "03-3d-scenes-and-games/鹈鹕骑行_越秀公园_手机版.html",
+      "bytes": 773237,
+      "original_sha256": "a8376c28962cad713cfd22005f46450ce8bea4e17837f0154af905ebc9670c39",
+      "sha256": "a8376c28962cad713cfd22005f46450ce8bea4e17837f0154af905ebc9670c39",
+      "modification": null
+    },
+    {
+      "category": "03-3d-scenes-and-games",
+      "original_filename": "鹈鹕游越秀_游戏版_电脑版.html",
+      "path": "03-3d-scenes-and-games/鹈鹕游越秀_游戏版_电脑版.html",
+      "bytes": 801582,
+      "original_sha256": "305d7fcfa0fac5f3bd86edf432ba8c7c5037eda6f93cbbac9f86b815bd184db3",
+      "sha256": "305d7fcfa0fac5f3bd86edf432ba8c7c5037eda6f93cbbac9f86b815bd184db3",
+      "modification": null
+    },
+    {
+      "category": "03-3d-scenes-and-games",
+      "original_filename": "鹈鹕游越秀_游戏版_手机版.html",
+      "path": "03-3d-scenes-and-games/鹈鹕游越秀_游戏版_手机版.html",
+      "bytes": 808591,
+      "original_sha256": "b66b4bcbe4c112e9243fc49bb0f9b8a9f0a250f68075f3c57d603d3e1e4bb757",
+      "sha256": "b66b4bcbe4c112e9243fc49bb0f9b8a9f0a250f68075f3c57d603d3e1e4bb757",
+      "modification": null
+    },
+    {
+      "category": "04-particle-art",
+      "original_filename": "粒子宇宙.html",
+      "path": "04-particle-art/粒子宇宙.html",
+      "bytes": 16713,
+      "original_sha256": "be3d0ae7892c2a20afd0b53b7e08759f2b84eb208ed73274cb19c3cee8ede40b",
+      "sha256": "be3d0ae7892c2a20afd0b53b7e08759f2b84eb208ed73274cb19c3cee8ede40b",
+      "modification": null
+    },
+    {
+      "category": "05-english-reading",
+      "original_filename": "散文阅读.html",
+      "path": "05-english-reading/散文阅读.html",
+      "bytes": 49315030,
+      "original_sha256": "6afefc3f61a85631aa6575cc930cecc6409d36ea6a49bd395ec1f7d213e25d7e",
+      "sha256": "6afefc3f61a85631aa6575cc930cecc6409d36ea6a49bd395ec1f7d213e25d7e",
+      "modification": null
+    },
+    {
+      "category": "05-english-reading",
+      "original_filename": "瓦尔登湖.html",
+      "path": "05-english-reading/瓦尔登湖.html",
+      "bytes": 28224007,
+      "original_sha256": "d028cd2cfe03d9d6d709339584af1e7e4e222e49624a4123932d7edaec1ff5c9",
+      "sha256": "d028cd2cfe03d9d6d709339584af1e7e4e222e49624a4123932d7edaec1ff5c9",
+      "modification": null
+    },
+    {
+      "category": "05-english-reading",
+      "original_filename": "Here_Is_New_York_full.html",
+      "path": "05-english-reading/Here_Is_New_York_full.html",
+      "bytes": 24230723,
+      "original_sha256": "1724e706e1df56875c94748eb8810ec936a1772e4f4b33f0db73899b0b446f26",
+      "sha256": "1724e706e1df56875c94748eb8810ec936a1772e4f4b33f0db73899b0b446f26",
+      "modification": null
+    },
+    {
+      "category": "06-educational-films",
+      "original_filename": "让AI画得更好看_文生图中的色彩搭配.mp4",
+      "path": "06-educational-films/让AI画得更好看_文生图中的色彩搭配.mp4",
+      "bytes": 16423054,
+      "original_sha256": "394f641f36a38d3f9ce85f557b4f589d2805fc749bc2a1254e155fa78344b146",
+      "sha256": "394f641f36a38d3f9ce85f557b4f589d2805fc749bc2a1254e155fa78344b146",
+      "modification": null
+    },
+    {
+      "category": "06-educational-films",
+      "original_filename": "METAPHOR-The-Worlds-We-Think-Inside.mp4",
+      "path": "06-educational-films/METAPHOR-The-Worlds-We-Think-Inside.mp4",
+      "bytes": 28811247,
+      "original_sha256": "7cfe849ab68211c0223ad7caaa1bb9f6d791af2190979d857be29168250c9bfb",
+      "sha256": "7cfe849ab68211c0223ad7caaa1bb9f6d791af2190979d857be29168250c9bfb",
+      "modification": null
+    },
+    {
+      "category": "06-educational-films",
+      "original_filename": "STORYTELLING-From-Homer-to-Steve-Jobs.mp4",
+      "path": "06-educational-films/STORYTELLING-From-Homer-to-Steve-Jobs.mp4",
+      "bytes": 27882934,
+      "original_sha256": "8a3517b1d46344407fd6da5505c1e44faeb440fc729521e0c8f854a2a7f3ecc9",
+      "sha256": "8a3517b1d46344407fd6da5505c1e44faeb440fc729521e0c8f854a2a7f3ecc9",
+      "modification": null
+    }
+  ]
+}
