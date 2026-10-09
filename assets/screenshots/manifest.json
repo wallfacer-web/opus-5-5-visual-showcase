@@ -1,0 +1,359 @@
+{
+  "captured_date": "2026-10-09",
+  "showcase_count": 20,
+  "image_count": 44,
+  "images": [
+    {
+      "showcase": "01-ink-and-poetry/水墨小品.html",
+      "image": "assets/screenshots/ink-01.jpg",
+      "title": "山水示范：墨色与留白",
+      "caption": "远山用淡墨铺开，近处树木、舟船和岸线以较重笔触勾画。下方保留墨色、笔宽、枯润及盖印工具，展示同一画布如何兼顾观看与创作。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "01-ink-and-poetry/水墨小品.html",
+      "image": "assets/screenshots/ink-02.jpg",
+      "title": "墨竹示范：笔触构成形态",
+      "caption": "竹竿与竹叶采用不同粗细和方向的笔触，纸张纹理仍透过墨色可见。可对照山水示范，观察程序笔刷如何表现不同题材。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "01-ink-and-poetry/千里江山·活卷.html",
+      "image": "assets/screenshots/landscape-01.jpg",
+      "title": "清晨入画：青绿山水的层次",
+      "caption": "暖色绢纸、蓝绿山体与浅色水面形成清晨景象。近景岛屿和远景群山的尺寸、色彩差异，让二维绘画具有可游览的空间感。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "01-ink-and-poetry/千里江山·活卷.html",
+      "image": "assets/screenshots/landscape-02.jpg",
+      "title": "月夜入画：同一山水的时间变化",
+      "caption": "月亮、暗色天空和较冷的山水色调改变画面氛围。昼夜切换重新组织光色，使读者看到同一绘画场景可以随时间变化。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "01-ink-and-poetry/汴京一日.html",
+      "image": "assets/screenshots/bianjing-01.jpg",
+      "title": "城郊启程：从人物活动进入长卷",
+      "caption": "房舍、柳树与行人组成起点。下方缩略导航显示当前可见区域，工具栏提供自动导览、缩放和送货人跟随，便于在长卷中定位。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "01-ink-and-poetry/汴京一日.html",
+      "image": "assets/screenshots/bianjing-02.jpg",
+      "title": "虹桥相遇：放大后探索小故事",
+      "caption": "虹桥和桥上的人物成为画面中心，“桥下行船”提示标出可探索内容。空间浏览与故事提示结合，帮助读者从全景走到局部细节。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "01-ink-and-poetry/春江花月夜.html",
+      "image": "assets/screenshots/moon-poem-01.jpg",
+      "title": "第一联：月出与江潮",
+      "caption": "“春江潮水连海平，海上明月共潮生”以竖排文字、江面反光和初升月亮呈现。诗句与景物并置，让意象先以画面进入阅读。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "01-ink-and-poetry/春江花月夜.html",
+      "image": "assets/screenshots/moon-poem-02.jpg",
+      "title": "第三联：原文与英译对照",
+      "caption": "开启“英译”后，英文显示在画面下方；底部可翻到上一联、下一联，也可打开全文。场景动画与双语阅读共用一个界面。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "01-ink-and-poetry/春江花月夜_720p.mp4",
+      "image": "assets/screenshots/moon-film-01.jpg",
+      "title": "月光与水面",
+      "caption": "月亮的暖色与深蓝江面形成对比，横向波纹把倒影拉成一条亮带。缓慢的景物运动为诗歌营造安静的观看节奏。",
+      "video_time_seconds": 55,
+      "method": "video-frame"
+    },
+    {
+      "showcase": "01-ink-and-poetry/春江花月夜_720p.mp4",
+      "image": "assets/screenshots/moon-film-02.jpg",
+      "title": "诗句进入画面",
+      "caption": "月亮、水中倒影与“谁家今夜扁舟子？何处相思明月楼？”同屏出现，文字将自然景色转入人物与相思的主题。",
+      "video_time_seconds": 160,
+      "method": "video-frame"
+    },
+    {
+      "showcase": "01-ink-and-poetry/春江花月夜_720p.mp4",
+      "image": "assets/screenshots/moon-film-03.jpg",
+      "title": "落花与远月",
+      "caption": "近处枝头和飘落花瓣补充画面层次，远处月亮与江面继续呼应。画面变化让同一夜景具有连续的诗意进程。",
+      "video_time_seconds": 305,
+      "method": "video-frame"
+    },
+    {
+      "showcase": "01-ink-and-poetry/所剩沾衣_2.html",
+      "image": "assets/screenshots/song-01.jpg",
+      "title": "歌曲主画面：题字、月色与播放控制",
+      "caption": "竖排题字与层叠远山建立古风氛围，歌词集中在右侧。底部进度、时长和歌词偏移按钮让视听体验保持清晰的操作入口。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "01-ink-and-poetry/所剩沾衣_2.html",
+      "image": "assets/screenshots/song-02.jpg",
+      "title": "副歌跟随：当前句成为视觉焦点",
+      "caption": "播放到副歌时，当前歌词以较亮文字突出，其余歌词减弱。读者可看到逐句跟随的效果，也能点击歌词直接跳到相应位置。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "02-shadow-theatre/武松打虎.html",
+      "image": "assets/screenshots/tiger-01.jpg",
+      "title": "台前：赤手搏猛虎",
+      "caption": "红色戏台框住发光的影幕，武松和猛虎在幕内行动，前景观众形成观看层次。字幕与进度条帮助读者理解当前剧情和章节位置。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "02-shadow-theatre/武松打虎.html",
+      "image": "assets/screenshots/tiger-02.jpg",
+      "title": "幕后：灯、影幕与操演空间",
+      "caption": "切到“幕后”后可以看到灯源、幕布和操演者，角色的皮影形态依然可见。机位变化把舞台效果与实现它的空间关系放在一起。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "02-shadow-theatre/孙悟空借芭蕉扇.html",
+      "image": "assets/screenshots/fan-01.jpg",
+      "title": "第二幕：悟空初见铁扇",
+      "caption": "两个人物的侧面造型、装饰花纹、操纵杆和分层山景保留皮影语言。角色动作与对话构成叙事，观众可以切换章节反复观看。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "02-shadow-theatre/孙悟空借芭蕉扇.html",
+      "image": "assets/screenshots/fan-02.jpg",
+      "title": "第六幕：真扇灭火",
+      "caption": "火焰山铺满火焰，悟空举起芭蕉扇，字幕提示即将扇风。场景、道具和人物动作共同说明当前故事目标。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "03-3d-scenes-and-games/五色博物馆.html",
+      "image": "assets/screenshots/museum-01.jpg",
+      "title": "序厅：用空间介绍色彩史",
+      "caption": "中央彩色装置与地面分区形成视觉入口，墙面文字和朝代色板交代主题。底部时间轴同时承担历史线索和空间导航。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "03-3d-scenes-and-games/五色博物馆.html",
+      "image": "assets/screenshots/museum-02.jpg",
+      "title": "宋代展厅：器物、色板与山水共同展示",
+      "caption": "浅色展厅陈列器物，两侧色板和青绿山水补充语境，地面反射增强空间感。点击“宋”即可从序厅直接进入这一展区。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "03-3d-scenes-and-games/鹈鹕骑行_越秀公园_电脑版_1.html",
+      "image": "assets/screenshots/ride-desktop-01.jpg",
+      "title": "晴天追随镜头：边骑行边游览",
+      "caption": "镜头跟在鹈鹕身后，正门、行人和道路都处于可观察范围。左下仪表、右下地图与上方工具栏完整呈现电脑版的操作方式。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "03-3d-scenes-and-games/鹈鹕骑行_越秀公园_电脑版_1.html",
+      "image": "assets/screenshots/ride-desktop-02.jpg",
+      "title": "雨夜：光照与天气共同改变场景",
+      "caption": "切换雨天并把时间调到午夜后，路灯、车灯与雨线成为主要视觉元素。相同公园布局呈现出另一种可实时体验的环境。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "03-3d-scenes-and-games/鹈鹕骑行_越秀公园_手机版.html",
+      "image": "assets/screenshots/ride-mobile-01.jpg",
+      "title": "横屏骑行：手指可直接操控",
+      "caption": "变道按钮在左下，加速、刹车和按铃在右侧。顶部保留时间、镜头与菜单，地图缩小后仍能提供路线信息。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "03-3d-scenes-and-games/鹈鹕骑行_越秀公园_手机版.html",
+      "image": "assets/screenshots/ride-mobile-02.jpg",
+      "title": "展开菜单：功能集中在侧面面板",
+      "caption": "镜头、天气、声音、地图和骑行信息集中在滑出的设置菜单中。主画面仍在背景可见，便于读者理解操作与场景的关系。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "03-3d-scenes-and-games/鹈鹕游越秀_游戏版_电脑版.html",
+      "image": "assets/screenshots/game-desktop-01.jpg",
+      "title": "开始菜单：关卡与任务规则",
+      "caption": "晴天、黄昏、雷雨夜骑三个关卡按难度排列，菜单说明收鱼、按铃、避障和打卡规则。读者可先选择挑战或直接进入观光。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "03-3d-scenes-and-games/鹈鹕游越秀_游戏版_电脑版.html",
+      "image": "assets/screenshots/game-desktop-02.jpg",
+      "title": "实际游玩：计分与路线同时可见",
+      "caption": "底部计时、得分、打卡数量和鱼量显示任务状态，工具栏保留按铃与冲刺。公园景物作为可游览空间，也成为游戏路线。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "03-3d-scenes-and-games/鹈鹕游越秀_游戏版_手机版.html",
+      "image": "assets/screenshots/game-mobile-01.jpg",
+      "title": "晴天收鱼：任务反馈与触控按钮",
+      "caption": "小鱼沿道路分布，左上面板显示计时、得分、打卡数和喉囊鱼量。左右两侧按钮让读者看到游戏如何在触屏布局中操作。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "03-3d-scenes-and-games/鹈鹕游越秀_游戏版_手机版.html",
+      "image": "assets/screenshots/game-mobile-02.jpg",
+      "title": "雷雨夜骑：环境成为挑战的一部分",
+      "caption": "雨线、路灯和行人构成夜间关卡，屏幕提示“前方行人要过马路，按铃提醒”。天气变化与任务提示共同影响游玩节奏。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "04-particle-art/粒子宇宙.html",
+      "image": "assets/screenshots/particles-01.jpg",
+      "title": "旋臂星系：粒子构成空间",
+      "caption": "明亮中心与旋臂共同形成星系，疏密与亮度提供深度线索。界面提示指针可以作为引力影响运动，观看者能够参与形态变化。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "04-particle-art/粒子宇宙.html",
+      "image": "assets/screenshots/particles-02.jpg",
+      "title": "DNA：同一批粒子的另一种组织",
+      "caption": "粒子排列成双螺旋和横向连接，颜色区分不同部分。点击底部形态按钮即可转换，展示数学坐标如何生成不同视觉结构。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "05-english-reading/散文阅读.html",
+      "image": "assets/screenshots/humor-01.jpg",
+      "title": "逐段精读：声音、原文与注释同屏",
+      "caption": "点击“dissected, as a frog can”展开青蛙类比的解释，下方接续修辞看点。两个音频入口分别负责英文朗读和中文讲解。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "05-english-reading/散文阅读.html",
+      "image": "assets/screenshots/humor-02.jpg",
+      "title": "翻卡复习：词义回到原文语境",
+      "caption": "翻面后显示词义、原句、译文与来源段落；“再看一遍”“已掌握”和筛选帮助安排复习。100 词一览提供快速跳转。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "05-english-reading/瓦尔登湖.html",
+      "image": "assets/screenshots/walden-01.jpg",
+      "title": "文章导读与第一段：先建立阅读背景",
+      "caption": "顶部明确文章写作背景和段落数量，段落导航紧接其后。第一段并排提供英文与中文音频，原文中的高亮词句可以点击解释。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "05-english-reading/瓦尔登湖.html",
+      "image": "assets/screenshots/walden-02.jpg",
+      "title": "100 张词卡：检查词义与用法",
+      "caption": "正面先显示英文单词和词性，点击翻面可查看释义与原句；还可朗读、打乱顺序、筛选或标记掌握。例句与对应段落关联。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "05-english-reading/Here_Is_New_York_full.html",
+      "image": "assets/screenshots/new-york-01.jpg",
+      "title": "原文精读：在具体句子中解释词义",
+      "caption": "第一段围绕纽约的孤独与隐私展开。“queer prizes”的注释说明旧时代词义，帮助读者结合写作年代理解表达。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "05-english-reading/Here_Is_New_York_full.html",
+      "image": "assets/screenshots/new-york-02.jpg",
+      "title": "全篇总结：从段落回到论证过程",
+      "caption": "中英总结音频之后，结构区按“礼、分、游、众、变、危”组织全篇。论点框和可点击段落标签把长文变成可回溯的阅读路径。",
+      "video_time_seconds": null,
+      "method": "browser-screenshot"
+    },
+    {
+      "showcase": "06-educational-films/让AI画得更好看_文生图中的色彩搭配.mp4",
+      "image": "assets/screenshots/colour-film-01.jpg",
+      "title": "主色、辅助色与点缀色",
+      "caption": "包装案例旁列出三种颜色的角色，画面说明最大面积主色决定整体氛围。读者可先从颜色的用途与比例理解画面。",
+      "video_time_seconds": 25,
+      "method": "video-frame"
+    },
+    {
+      "showcase": "06-educational-films/让AI画得更好看_文生图中的色彩搭配.mp4",
+      "image": "assets/screenshots/colour-film-02.jpg",
+      "title": "互补色：色环到实际案例",
+      "caption": "蓝与橙在色环和右侧包装中对应出现，字幕强调蓝色大面积主导、橙色少量强调。抽象色彩关系通过具体设计得到解释。",
+      "video_time_seconds": 80,
+      "method": "video-frame"
+    },
+    {
+      "showcase": "06-educational-films/让AI画得更好看_文生图中的色彩搭配.mp4",
+      "image": "assets/screenshots/colour-film-03.jpg",
+      "title": "把配色写进文生图提示词",
+      "caption": "案例将颜色名称、使用位置与面积关系组织为文字描述，旁边保留目标画面。读者可以对照提示词和配色结果理解写法。",
+      "video_time_seconds": 145,
+      "method": "video-frame"
+    },
+    {
+      "showcase": "06-educational-films/METAPHOR-The-Worlds-We-Think-Inside.mp4",
+      "image": "assets/screenshots/metaphor-film-01.jpg",
+      "title": "具体物象：从可见事物理解抽象概念",
+      "caption": "一排不同物件在暗色空间中依次出现，字幕说明人类借它们理解原本难以理解的内容。简化形象为概念比较提供参照。",
+      "video_time_seconds": 30,
+      "method": "video-frame"
+    },
+    {
+      "showcase": "06-educational-films/METAPHOR-The-Worlds-We-Think-Inside.mp4",
+      "image": "assets/screenshots/metaphor-film-02.jpg",
+      "title": "艺术家—光—世界：让概念关系可见",
+      "caption": "灯向画面投射光线，人物位于旁边，文字排列为 ARTIST → LIGHT → WORLD。光的方向把“向外投射内在世界”的解释转成空间关系。",
+      "video_time_seconds": 150,
+      "method": "video-frame"
+    },
+    {
+      "showcase": "06-educational-films/METAPHOR-The-Worlds-We-Think-Inside.mp4",
+      "image": "assets/screenshots/metaphor-film-03.jpg",
+      "title": "手机中的隐喻：语言继续演变",
+      "caption": "手机屏幕列出“拉黑、上岸、破圈、赛道”以及 red flag、ghosting 等表达，字幕指出隐喻仍在日常使用中被创造。它将概念讨论连接到读者熟悉的语言。",
+      "video_time_seconds": 290,
+      "method": "video-frame"
+    },
+    {
+      "showcase": "06-educational-films/STORYTELLING-From-Homer-to-Steve-Jobs.mp4",
+      "image": "assets/screenshots/story-film-01.jpg",
+      "title": "旅程：把生命阶段连成叙事",
+      "caption": "祖辈、孩子与孙辈由弧线连接，字幕以 journey 概括进程。人物与路径让时间和代际关系成为可见的故事骨架。",
+      "video_time_seconds": 30,
+      "method": "video-frame"
+    },
+    {
+      "showcase": "06-educational-films/STORYTELLING-From-Homer-to-Steve-Jobs.mp4",
+      "image": "assets/screenshots/story-film-02.jpg",
+      "title": "意义：两条路径在中心汇合",
+      "caption": "不同颜色的曲线靠近 MEANING，旁边配符号与文字。字幕指出故事影响我们体验时间、身份和情感的方式，抽象解释由线条关系承载。",
+      "video_time_seconds": 180,
+      "method": "video-frame"
+    },
+    {
+      "showcase": "06-educational-films/STORYTELLING-From-Homer-to-Steve-Jobs.mp4",
+      "image": "assets/screenshots/story-film-03.jpg",
+      "title": "火炬：用单一意象收束尾段",
+      "caption": "画面以暗背景中的发光火炬聚焦注意力，标题 THE TORCH 呼应传递的意象。减少画面元素后，视觉节奏转向停顿与思考。",
+      "video_time_seconds": 340,
+      "method": "video-frame"
+    }
+  ]
+}

@@ -15,6 +15,34 @@
 | [英语文学精读与学习工具](05-english-reading/README.md) | 3 | 3 | 将逐段原文、英文朗读、中文讲解、词句注释和闪卡复习组织为完整的阅读学习流程。 |
 | [动态教学与知识短片](06-educational-films/README.md) | 3 | 3 | 通过配色图解、概念映射、叙事场景与字幕，把抽象知识组织为可直接播放的教学短片。 |
 
+## 截图预览
+
+全部 **20 个展示文件**均配有 **2–3 张图片，共 44 张**，涵盖主画面、关键功能或不同场景。点击下面的分类名称可查看完整图文导览；视频图注附有时间点，电脑与手机入口分别提供截图。
+
+### [数字水墨与诗意视听](01-ink-and-poetry/README.md#图文导览)
+
+[![数字水墨与诗意视听预览](assets/screenshots/landscape-01.jpg)](01-ink-and-poetry/README.md#图文导览)
+
+### [皮影戏与故事演出](02-shadow-theatre/README.md#图文导览)
+
+[![皮影戏与故事演出预览](assets/screenshots/tiger-01.jpg)](02-shadow-theatre/README.md#图文导览)
+
+### [三维场景与互动游戏](03-3d-scenes-and-games/README.md#图文导览)
+
+[![三维场景与互动游戏预览](assets/screenshots/museum-02.jpg)](03-3d-scenes-and-games/README.md#图文导览)
+
+### [粒子生成艺术](04-particle-art/README.md#图文导览)
+
+[![粒子生成艺术预览](assets/screenshots/particles-01.jpg)](04-particle-art/README.md#图文导览)
+
+### [英语文学精读与学习工具](05-english-reading/README.md#图文导览)
+
+[![英语文学精读与学习工具预览](assets/screenshots/humor-01.jpg)](05-english-reading/README.md#图文导览)
+
+### [动态教学与知识短片](06-educational-films/README.md#图文导览)
+
+[![动态教学与知识短片预览](assets/screenshots/colour-film-02.jpg)](06-educational-films/README.md#图文导览)
+
 ## 下载与观看
 
 GitHub 文件链接用于查看与下载源文件，HTML 文件不会在仓库文件页直接运行。点击仓库的 **Code → Download ZIP**，解压后在浏览器中打开相应 HTML；MP4 可直接交给播放器。
